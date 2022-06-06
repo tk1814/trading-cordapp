@@ -32,6 +32,7 @@ import org.springframework.http.ResponseEntity;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.ws.rs.core.Response.Status.*;
 
@@ -40,6 +41,7 @@ import com.sendgrid.helpers.mail.Mail;
 import com.sendgrid.helpers.mail.objects.Content;
 import com.sendgrid.helpers.mail.objects.Email;
 import org.springframework.web.bind.annotation.*;
+
 import javax.ws.rs.QueryParam;
 
 
@@ -116,50 +118,72 @@ public class Controller {
     /**
      * Initiates Create Trade Flow.
      */
-    @RequestMapping(value = "/createTrade", method = RequestMethod.PUT)
-    public Response createTrade(@QueryParam("sellValue") int sellValue,
-                                @QueryParam("sellCurrency") String sellCurrency,
-                                @QueryParam("buyValue") int buyValue,
-                                @QueryParam("buyCurrency") String buyCurrency,
-                                @QueryParam("counterParty") CordaX500Name counterParty,
-                                @QueryParam("tradeStatus") String tradeStatus) {
+    @RequestMapping(value = "/createTrade", method = RequestMethod.POST)
+    public ResponseEntity<String> createTrade(@RequestBody String payload) {
+        System.out.println(payload);
+
+        JsonObject convertedObject = new Gson().fromJson(payload, JsonObject.class);
+
+        String counterParty = convertedObject.get("counterParty").getAsString();
+        int sellValue = convertedObject.get("sellValue").getAsInt();
+        String sellCurrency = convertedObject.get("sellCurrency").getAsString();
+        int buyValue = convertedObject.get("buyValue").getAsInt();
+        String buyCurrency = convertedObject.get("buyCurrency").getAsString();
+
+        JsonObject resp = new JsonObject();
 
         if (counterParty == null) {
-            return Response.status(Status.BAD_REQUEST)
-                    .entity("Query parameter 'Counter partyName' missing or has wrong format.\n").build();
+            resp.addProperty("Response", "Query parameter 'Counter partyName' missing or has wrong format.\n");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
         }
         if (sellValue <= 0) {
-            return Response.status(Status.BAD_REQUEST).entity("Query parameter 'Sell Value' must be non-negative.\n").build();
+            resp.addProperty("Response", "Query parameter 'Sell Value' must be non-negative.\n");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
         }
         if (buyValue <= 0) {
-            return Response.status(Status.BAD_REQUEST).entity("Query parameter 'Buy Value' must be non-negative.\n").build();
+            resp.addProperty("Response", "Query parameter 'Buy Value' must be non-negative.\n");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
         }
-
-        if (this.proxy.wellKnownPartyFromX500Name(counterParty) == null) {
-            return Response.status(Status.BAD_REQUEST).entity("Counter Party named " + counterParty + " cannot be found.\n").build();
+        if (proxy.wellKnownPartyFromX500Name(CordaX500Name.parse(counterParty)) == null) { // TODO request gets stuck here
+            resp.addProperty("Response", "Counter Party named \" + counterParty + \" cannot be found.\\n");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
         } else {
-            // TODO COMPLETE TRADEFLOW AND COMPLETE THE CONTROLLER
+
             try {
-                TradeState tradestate = new TradeState(sellValue,
+                //UUID.randomUUID().toString(); //UniqueIdentifier.Companion.fromString(convertedObject.get("gameId").getAsString());
+                UniqueIdentifier tradeId = new UniqueIdentifier();
+
+                String tradeStatus = "pending";
+                TradeState tradeState = new TradeState(sellValue,
                         sellCurrency,
                         buyValue,
                         buyCurrency,
-                        this.proxy.wellKnownPartyFromX500Name(myLegalName),
-                        this.proxy.wellKnownPartyFromX500Name(counterParty),
-                        tradeStatus, null);
+                        proxy.wellKnownPartyFromX500Name(myLegalName),
+                        proxy.wellKnownPartyFromX500Name(CordaX500Name.parse(counterParty)),
+                        tradeStatus,
+                        tradeId);
+                System.out.println(6);
+//                SignedTransaction signedTx = proxy.startFlowDynamic(TradeFlow.class, tradeState).getReturnValue().get();
+                // TODO Exception : net.corda.core.transactions.MissingContractAttachments: Cannot find contract attachments for com.cs.cordapp.contract.TradeContractnull.
+                SignedTransaction signedTx = proxy.startTrackedFlowDynamic(TradeFlow.class, tradeState).getReturnValue().get();
 
-                SignedTransaction signedTx = proxy.startFlowDynamic(TradeFlow.class, tradestate)
-                        .getReturnValue().get();
+//            SantaSessionState output = proxy.startTrackedFlowDynamic(CreateSantaSessionFlow.class, playerNames, playerEmails, elf).getReturnValue().get().getTx().outputsOfType(SantaSessionState.class).get(0);
+//            UniqueIdentifier gameId = output.getLinearId();
+
                 System.out.println("signedTx.getId() =  :" + signedTx.getId());
-                return Response.status(Status.CREATED).entity("Transaction id " + signedTx.getId() + " committed to ledger.\n").build();
+                resp.addProperty("Response", "Transaction id " + signedTx.getId() + " committed to ledger.\n");
+                return ResponseEntity.status(HttpStatus.ACCEPTED).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
 
             } catch (Exception ex) {
+                System.out.println("Exception : " + ex.getMessage());
 
-                return Response.status(Status.BAD_REQUEST).entity(ex.getMessage()).build();
+                resp.addProperty("Response", ex.getMessage());
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
             }
         }
 
     }
+    // TODO COMPLETE TRADEFLOW AND COMPLETE THE CONTROLLER
 
     /**
      * Initiates Create Trade Flow.
@@ -188,6 +212,7 @@ public class Controller {
 
                 SignedTransaction signedTx = proxy.startFlowDynamic(CounterTradeFlow.class, tradestate)
                         .getReturnValue().get();
+
                 System.out.println("signedTx.getId() =  :" + signedTx.getId());
                 return Response.status(Status.CREATED).entity("Transaction id " + signedTx.getId() + " committed to ledger.\n").build();
 
@@ -222,7 +247,7 @@ public class Controller {
         return null;
     }
 
-//    SECRETSANTA CONTROLLER
+    //    SECRETSANTA CONTROLLER
 //    @RequestMapping(value = "/node", method = RequestMethod.GET)
 //    private ResponseEntity<String> returnName() {
 //        JsonObject resp = new JsonObject();
@@ -277,10 +302,14 @@ public class Controller {
 //        }
 //    }
 //
-//    @RequestMapping(value = "/games", method = RequestMethod.POST)
-//    public ResponseEntity<String> createGame(@RequestBody String payload) {
-//
-//        System.out.println(payload);
+    @RequestMapping(value = "/games", method = RequestMethod.POST)
+    public ResponseEntity<String> createGame(@RequestBody String payload) {
+        System.out.println(payload);
+
+        JsonObject resp = new JsonObject();
+        resp.addProperty("gameId", "one");
+        return ResponseEntity.status(HttpStatus.ACCEPTED).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
+    }
 //        JsonObject convertedObject = new Gson().fromJson(payload, JsonObject.class);
 //
 //        JsonArray pNames = convertedObject.getAsJsonArray("playerNames");

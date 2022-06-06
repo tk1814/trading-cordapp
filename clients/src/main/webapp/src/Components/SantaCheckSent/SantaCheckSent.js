@@ -6,7 +6,7 @@ import Box from '@material-ui/core/Box';
 import Typography from '@material-ui/core/Typography';
 import { makeStyles } from '@material-ui/core/styles';
 import Container from '@material-ui/core/Container';
-import secret_corda from '../img/secret_corda.png';
+import corda_img from '../img/corda_img.png';
 
 function Copyright() {
   return (
@@ -49,7 +49,7 @@ export default function SantaCheckSent(props) {
     <CssBaseline />
     <div className={classes.paper}>
 
-      <img src={secret_corda}/>
+      <img src={corda_img}/>
 
       <Typography component="h1" variant="h2">
       Help is on the sleigh!

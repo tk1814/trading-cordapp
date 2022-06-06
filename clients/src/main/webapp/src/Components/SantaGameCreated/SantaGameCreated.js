@@ -7,9 +7,7 @@ import Typography from '@material-ui/core/Typography';
 import { makeStyles } from '@material-ui/core/styles';
 import Container from '@material-ui/core/Container';
 
-import secret_corda from '../img/secret_corda.png';
-import santa_flying from '../img/reindeer-flying.png';
-
+import corda_img from '../img/corda_img.png';
 
 function Copyright() {
   return (
@@ -52,7 +50,7 @@ export default function SantaGameCreated(props) {
     <CssBaseline />
     <div className={classes.paper}>
 
-      <img src={secret_corda}/>
+      <img src={corda_img}/>
 
       <Typography component="h1" variant="h2">
       The Game is on!
@@ -71,9 +69,9 @@ export default function SantaGameCreated(props) {
         Merry Christmas from all of us at R3. 🎄
       </Typography>
 
-      <Box mt={5}>
-        <img src={santa_flying}/>
-      </Box>
+      {/*<Box mt={5}>*/}
+      {/*  <img src={santa_flying}/>*/}
+      {/*</Box>*/}
 
       <Grid container justify="flex-end">
         <Grid item>

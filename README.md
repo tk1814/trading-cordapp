@@ -1,5 +1,3 @@
-![](./clients/src/main/webapp/src/Components/img/secret_corda.png)
-
 # Corda Trading App
 Open the project in Intellij:
 - File -> Open -> trading-cordapp -> build.gradle -> Open as a Project
@@ -16,7 +14,7 @@ Run in terminal 2:
 ```
 Run in terminal 3:
 ```
-To install npm run:
+To install npm:
     - sudo apt-get install curl
     - curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
     - (close and reopen the terminal)
@@ -25,9 +23,14 @@ To install npm run:
 
 To start the react server:
     - cd clients/src/main/webapp
-    - npm install
+    - npm install 
     - npm start
 ```
+
+# Navigate to:
+
+1. PartyA: `http://localhost:10009`
+2. PartyB: `http://localhost:10012`
 
 # Corda Secret Santa
 
