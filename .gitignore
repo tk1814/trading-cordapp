@@ -1,0 +1,8 @@
+clients/src/main/webapp/node_modules
+logs/
+clients/logs/
+build/
+clients/build
+contracts/build
+workflows/bin
+contracts/bin
