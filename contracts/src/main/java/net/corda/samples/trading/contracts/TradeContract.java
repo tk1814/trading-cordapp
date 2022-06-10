@@ -11,6 +11,7 @@ import java.security.PublicKey;
 import java.util.List;
 
 import net.corda.samples.trading.states.TradeState;
+import net.corda.samples.trading.contracts.TradeContract;
 
 import static net.corda.core.contracts.ContractsDSL.requireThat;
 
@@ -32,14 +33,14 @@ import static net.corda.core.contracts.ContractsDSL.requireThat;
 
 public class TradeContract implements Contract {
 
-    public static String ID = "com.cs.cordapp.contract.TradeContract";
+    public static String ID = "net.corda.samples.trading.contracts.TradeContract";
 
     @Override
     public void verify(@NotNull LedgerTransaction tx) throws IllegalArgumentException {
 
-        if (tx.getCommands().size() != 1) {
-            throw new IllegalArgumentException("Transaction must have one command");
-        }
+//        if (tx.getCommands().size() != 1) {
+//            throw new IllegalArgumentException("Transaction must have one command");
+//        }
 
         List<ContractState> inputs = tx.getInputStates();
         List<ContractState> outputs = tx.getOutputStates();
@@ -47,9 +48,10 @@ public class TradeContract implements Contract {
         List<PublicKey> requiredSigners = command.getSigners();
         CommandData commandType = command.getValue();
 
-        if (commandType instanceof Create) {
+        // TODO: reflect these exceptions in the UI
+        if (commandType instanceof TradeContract.Commands.Create) {
             requireThat(require -> {
-                require.using("Transaction must have one command", tx.getCommands().size() != 1);
+                require.using("Transaction must have one command", tx.getCommands().size() == 1);
 
                 // Generic constraints around the Trade transaction.
                 // require.using("No inputs should be consumed when issuing a new Trade.", inputs.isEmpty());
@@ -76,7 +78,7 @@ public class TradeContract implements Contract {
                 return null;
             });
 
-        } else if (commandType instanceof CounterTrade) {
+        } else if (commandType instanceof TradeContract.Commands.CounterTrade) {
             requireThat(require -> {
                 // Generic constraints around the Trade transaction.
                 require.using("Only one output state should be created.", outputs.size() == 1);
@@ -102,10 +104,12 @@ public class TradeContract implements Contract {
         }
 
     }
+    /**
+     * This contract implements command: Create and CounterTrade.
+     */
+    public interface Commands extends CommandData {
+        class Create implements Commands {}
 
-    public static class Create implements CommandData {
-    }
-
-    public static class CounterTrade implements CommandData {
+        class CounterTrade implements Commands {}
     }
 }

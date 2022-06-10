@@ -9,9 +9,8 @@ import {
 import './App.css';
 
 import CreateTrade from '../CreateTrade/CreateTrade.js';
-import CheckSantaGame from '../CheckSantaGame/CheckSantaGame';
-import SantaGameCreated from '../SantaGameCreated/SantaGameCreated';
-import SantaCheckSent from '../SantaCheckSent/SantaCheckSent';
+import Trades from '../Trades/Trades.js';
+import Me from './Me';
 
 function App(props) {
 
@@ -20,10 +19,9 @@ function App(props) {
       <div>
         <Switch>
           <Route exact path="/" component={CreateTrade}/>
-          <Route path="/created" component={SantaGameCreated}/>
           <Route path="/create" component={CreateTrade}/>
-          <Route path="/checked" component={SantaCheckSent}/>
-          <Route path="/check" component={CheckSantaGame}/>          
+          <Route path="/trades" component={Trades}/>
+          <Route path="/me" component={Me}/>
         </Switch>
       </div>
     </Router>

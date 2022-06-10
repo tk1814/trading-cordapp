@@ -38,9 +38,9 @@ dependencies {
 
     // https://mvnrepository.com/artifact/javax/javaee-web-api
     compileOnly group: 'javax', name: 'javaee-web-api', version: '8.0' // added for package javax.ws.rs.core does not exist
-    compile group: 'javax.ws.rs', name: 'javax.ws.rs-api', version: '2.0.1' // added
+    compile group: 'javax.ws.rs', name: 'javax.ws.rs-api', version: '2.0.1' // added ^
     // https://mvnrepository.com/artifact/javax.ws.rs/javax.ws.rs-api
-    implementation group: 'javax.ws.rs', name: 'javax.ws.rs-api', version: '2.0.1' // added
+    implementation group: 'javax.ws.rs', name: 'javax.ws.rs-api', version: '2.0.1' // added ^
 
 }
 
@@ -63,8 +63,13 @@ task runTradingClient(type: JavaExec, dependsOn: assemble) {
  * are in the Controller file.
  *
  */
-task runTradingServer(type: JavaExec, dependsOn: assemble) {
+task runPartyAServer(type: JavaExec, dependsOn: assemble) {
     classpath = sourceSets.main.runtimeClasspath
     main = 'net.corda.samples.trading.webserver.Starter'
     args '--server.port=10056', '--config.rpc.host=localhost', '--config.rpc.port=10016', '--config.rpc.username=user1', '--config.rpc.password=test'
+}
+task runPartyBServer(type: JavaExec, dependsOn: assemble) {
+    classpath = sourceSets.main.runtimeClasspath
+    main = 'net.corda.samples.trading.webserver.Starter'
+    args '--server.port=10057', '--config.rpc.host=localhost', '--config.rpc.port=10017', '--config.rpc.username=user1', '--config.rpc.password=test'
 }

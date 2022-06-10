@@ -1,23 +1,18 @@
-import React, {useState, useEffect} from 'react';
+import React, {Component} from 'react';
 import Button from '@material-ui/core/Button';
 import CssBaseline from '@material-ui/core/CssBaseline';
 import TextField from '@material-ui/core/TextField';
 import Grid from '@material-ui/core/Grid';
+import Alert from '@material-ui/lab/Alert';
 import Typography from '@material-ui/core/Typography';
-import {makeStyles} from '@material-ui/core/styles';
+import {withStyles} from '@material-ui/core/styles';
 import Container from '@material-ui/core/Container';
-import {useHistory, withRouter} from 'react-router-dom';
 import axios from 'axios';
-
 import corda_img from '../img/corda_img.png';
-import {BACKEND_URL} from '../CONSTANTS.js';
+import {URL} from "../CONSTANTS";
+import {FormControl, InputLabel, MenuItem, Select} from "@material-ui/core";
 
-// function validateEmail(email) {
-//   const re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-//   return re.test(String(email).toLowerCase());
-// }
-
-const useStyles = makeStyles((theme) => ({
+const useStyles = (theme) => ({
     paper: {
         marginTop: theme.spacing(8),
         display: 'flex',
@@ -35,188 +30,275 @@ const useStyles = makeStyles((theme) => ({
     submit: {
         margin: theme.spacing(3, 0, 2),
     },
-}));
+});
 
-function CreateTrade(props) {
+class CreateTrade extends Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            nodes: [],
+            peers: [],
+            counterParty: null,
+            sellValue: 1,
+            sellCurrency: "GBP",
+            buyValue: 1,
+            buyCurrency: "EUR",
+            response: null,
+        }
+    }
 
-    // state variables and related functions
-    const [counterParty, setCounterParty] = useState("O=PartyB, L=New York, C=US"); // initialise variables
-    const [sellValue, setSellValue] = useState("1");
-    const [sellCurrency, setSellCurrency] = useState("GBP");
-    const [buyValue, setBuyValue] = useState("1");
-    const [buyCurrency, setBuyCurrency] = useState("EUR");
+    async componentDidMount() {
 
-    const counterPartyChange = e => setCounterParty(e.target.value);
-    const sellValueChange = e => setSellValue(e.target.value);
-    const sellCurrencyChange = e => setSellCurrency(e.target.value);
-    const buyValueChange = e => setBuyValue(e.target.value);
-    const buyCurrencyChange = e => setBuyCurrency(e.target.value);
+        // Initialise to PartyA port
+        if (localStorage.getItem('port') === null) {
+            localStorage.setItem('port', '10056');
+        }
+        this.getAllNodes(); // call once when webpage mounts
+        this.getPeers();
+    }
 
-    let inputData = [counterParty, sellValue, sellCurrency, buyValue, buyCurrency];
+    getAllNodes() {
+        let PORT = localStorage.getItem('port');
+        axios.get(URL + PORT + "/nodes", {
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+                'Content-Type': 'application/json'
+            }
+        }).then(res => {
+            let nodes = [];
+            res.data.nodes.forEach(function (item, index) {
+                nodes[index] = item.x500Principal.name;
+            });
+            this.setState({nodes});
+        });
+    }
 
-    const classes = useStyles();
-    const history = useHistory();
+    getPeers() {
+        let PORT = localStorage.getItem('port');
+        axios.get(URL + PORT + "/peers", {
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+                'Content-Type': 'application/json'
+            }
+        }).then(res => {
+            let peers = [];
+            res.data.peers.forEach(function (item, index) {
+                peers[index] = item.x500Principal.name;
+            });
+            this.setState({peers});
+        });
+    }
 
-    const [response, setResponse] = useState(null);
+    initiatingPartyChange = (e) => {
+        let node = e.target.value;
+        localStorage.setItem('currentNode', node);
 
-    function buttonHandler(e) {
+        if (node.includes("PartyA")) {
+            localStorage.setItem('port', '10056');
+        } else if (node.includes("PartyB")) {
+            localStorage.setItem('port', '10057');
+        }
+        this.getPeers();
+    }
+    counterPartyChange = (e) => {
+        this.setState({counterParty: e.target.value});
+    }
+    buyValueChange = (e) => {
+        this.setState({buyValue: e.target.value});
+    }
+    sellValueChange = (e) => {
+        this.setState({sellValue: e.target.value});
+    }
+    buyCurrencyChange = (e) => {
+        this.setState({buyCurrency: e.target.value});
+    }
+    sellCurrencyChange = (e) => {
+        this.setState({sellCurrency: e.target.value});
+    }
+
+    buttonHandler = (e) => {
         e.preventDefault();
 
-        console.log(inputData);
+        console.log([this.state.counterParty, this.state.sellValue, this.state.sellCurrency, this.state.buyValue, this.state.buyCurrency]);
 
         const data = {
-            // inputData: inputData,
-            counterParty: counterParty,
-            sellValue: sellValue,
-            sellCurrency: sellCurrency,
-            buyValue: buyValue,
-            buyCurrency: buyCurrency,
+            counterParty: this.state.counterParty,
+            sellValue: this.state.sellValue,
+            sellCurrency: this.state.sellCurrency,
+            buyValue: this.state.buyValue,
+            buyCurrency: this.state.buyCurrency,
         }
 
-        axios.post(
-            // BACKEND_URL + '/games',
-            BACKEND_URL + '/createTrade',
-            data,
-            {headers: {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'}}
-        ).then(res => {
-
-            // TODO SOMETHING WITH THE RESPONSE
-            const response = res.data;
-            console.log('RESPONSE:', response);
-            if (response !== null) {
-                setResponse(res);
+        let PORT = localStorage.getItem('port');
+        axios.post(URL + PORT + '/createTrade', data, {
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+                'Content-Type': 'application/json'
             }
+        }).then(res => {
 
+            const response = res.data.Response;
+            if (response !== null) {
+                console.log(response);
+                this.setState({response});
+                if (response.includes("committed to ledger")) {
+                    // this.redirectToTrades();
+                }
+            }
         }).catch(e => {
             console.log(e);
         });
 
     };
 
-    // note for anyone curious how this useEffect binds to the response
-    // https://stackoverflow.com/questions/63603966/react-api-call-with-axios-how-to-bind-an-onclick-event-with-an-api-call
+    redirectToTrades = () => {
+        const {history} = this.props;
+        if (history) history.push('/trades');
+    }
+// useEffect(() => {
+//     if (response !== null) {
+//         let path = "/created";
+//         history.push(path);
+//     }
+// }, [response]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    useEffect(() => {
-        if (response !== null) {
-            let path = "/created";
-            history.push(path);
-        }
-    }, [response]); // eslint-disable-line react-hooks/exhaustive-deps
+    render() {
+        const {classes} = this.props;
+        return (
+            <Container component="main" maxWidth="sm">
+                <CssBaseline/>
+                <div className={classes.paper}>
 
-    return (
-        <Container component="main" maxWidth="sm">
-            <CssBaseline/>
-            <div className={classes.paper}>
+                    {/*<Alert onClose={() => {}}> {this.state.response}</Alert>*/}
 
-                <img src={corda_img} alt="corda logo"/>
+                    <h2>{localStorage.getItem('currentNode')}</h2>
 
-                <Typography component="h1" variant="h2">
-                    Trading CordApp
-                </Typography>
+                    <img src={corda_img} alt="corda logo"/>
 
-                <form className={classes.form} id="createSantaForm" noValidate>
+                    <Typography component="h1" variant="h2">
+                        Trading CordApp
+                    </Typography>
 
-                    <Grid container spacing={2}>
+                    <FormControl required fullWidth>
+                        <InputLabel id="demo-simple-select-label">Initiating Party</InputLabel>
+                        <Select
+                            defaultValue={''}
+                            labelId="demo-simple-select-label"
+                            id="demo-simple-select"
+                            label="Party"
+                            onChange={this.initiatingPartyChange}>
+                            {this.state.nodes.map((node, key) => (
+                                <MenuItem
+                                    key={key}
+                                    value={node}>{node}
+                                </MenuItem>))}
+                        </Select>
+                    </FormControl>
 
-                        <Grid item xs={12} sm={12}>
-                            <TextField
-                                autoComplete="fname"
-                                name="counterParty"
-                                variant="outlined"
-                                required
-                                fullWidth
-                                id="counterParty"
-                                //{/*^^firstName1*/}
-                                label="Counter Party"
-                                placeholder="O=PartyB, L=New York, C=US"
-                                onChange={counterPartyChange}
-                                error={counterParty === ""}
-                                helperText={counterParty === "" ? 'Empty field!' : ' '}
-                                autoFocus
-                            />
+                    <form className={classes.form} id="createTradeForm" noValidate>
+
+                        <Grid container spacing={2}>
+
+                            <Grid item xs={12} sm={12}>
+
+                                <FormControl required fullWidth>
+                                    <InputLabel id="demo-simple-select-label">Counter Party</InputLabel>
+                                    <Select
+                                        defaultValue={''}
+                                        name="counterParty"
+                                        id="counterParty"
+                                        label="Counter Party"
+                                        onChange={this.counterPartyChange}>
+                                        {this.state.peers.map((peer, key) => (
+                                            <MenuItem
+                                                key={key}
+                                                value={peer}>{peer}
+                                            </MenuItem>))}
+                                    </Select>
+                                </FormControl>
+                            </Grid>
+
+                            <Grid item xs={12} sm={6}>
+                                <TextField
+                                    autoComplete="fname"
+                                    name="sellValue"
+                                    variant="outlined"
+                                    required
+                                    fullWidth
+                                    id="sellValue"
+                                    label="Sell Value"
+                                    placeholder=""
+                                    onChange={this.sellValueChange}
+                                    error={this.state.sellValue === ""}
+                                    helperText={this.state.sellValue === "" ? 'Empty field!' : ' '}
+                                />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <TextField
+                                    variant="outlined"
+                                    required
+                                    fullWidth
+                                    id="sellCurrency"
+                                    label="Sell Currency"
+                                    name="sellCurrency"
+                                    autoComplete="sellCurrency"
+                                    // type="email"
+                                    placeholder="GBP"
+                                    onChange={this.sellCurrencyChange}
+                                    error={this.sellCurrency === ""}
+                                    helperText={this.sellCurrency === "" ? 'Empty field!' : ' '}
+                                />
+                            </Grid>
+
+                            <Grid item xs={12} sm={6}>
+                                <TextField
+                                    autoComplete="fname"
+                                    name="buyValue"
+                                    variant="outlined"
+                                    required
+                                    fullWidth
+                                    id="buyValue"
+                                    label="Buy Value"
+                                    placeholder=""
+                                    onChange={this.buyValueChange}
+                                    error={this.state.buyValue === ""}
+                                    helperText={this.state.buyValue === "" ? 'Empty field!' : ' '}
+                                />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <TextField
+                                    variant="outlined"
+                                    required
+                                    fullWidth
+                                    id="buyCurrency"
+                                    label="Buy Currency"
+                                    name="buyCurrency"
+                                    // autoComplete="email"
+                                    type="text"
+                                    placeholder="EUR"
+                                    onChange={this.buyCurrencyChange}
+                                    error={this.state.buyCurrency === ""}
+                                    helperText={this.state.buyCurrency === "" ? 'Empty field!' : ' '}
+                                />
+                            </Grid>
+
+                            <Grid item xs={12}>
+                            </Grid>
                         </Grid>
 
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                autoComplete="fname"
-                                name="sellValue"
-                                variant="outlined"
-                                required
-                                fullWidth
-                                id="sellValue"
-                                label="Sell Value"
-                                placeholder=""
-                                onChange={sellValueChange}
-                                error={sellValue === ""}
-                                helperText={sellValue === "" ? 'Empty field!' : ' '}
-                            />
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                variant="outlined"
-                                required
-                                fullWidth
-                                id="sellCurrency"
-                                label="Sell Currency"
-                                name="sellCurrency"
-                                autoComplete="sellCurrency"
-                                // type="email"
-                                placeholder="GBP"
-                                onChange={sellCurrencyChange}
-                                error={sellCurrency === ""}
-                                helperText={sellCurrency === "" ? 'Empty field!' : ' '}
-                            />
-                        </Grid>
-
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                autoComplete="fname"
-                                name="buyValue"
-                                variant="outlined"
-                                required
-                                fullWidth
-                                id="buyValue"
-                                label="Buy Value"
-                                placeholder=""
-                                onChange={buyValueChange}
-                                error={buyValue === ""}
-                                helperText={buyValue === "" ? 'Empty field!' : ' '}
-                            />
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                variant="outlined"
-                                required
-                                fullWidth
-                                id="buyCurrency"
-                                label="Buy Currency"
-                                name="buyCurrency"
-                                // autoComplete="email"
-                                type="text"
-                                placeholder="EUR"
-                                onChange={buyCurrencyChange}
-                                error={buyCurrency === ""}
-                                helperText={buyCurrency === "" ? 'Empty field!' : ' '}
-                            />
-                        </Grid>
-
-                        <Grid item xs={12}>
-                        </Grid>
-                    </Grid>
-
-                    <Button
-                        type="submit"
-                        fullWidth
-                        variant="contained"
-                        color="primary"
-                        onClick={buttonHandler}>
-                        Create Trade
-                    </Button>
-                </form>
-                {/* TODO: FETCH REAL-TIME TRADING DATA */}
-            </div>
-        </Container>
-    );
+                        <Button
+                            type="submit"
+                            fullWidth
+                            variant="contained"
+                            color="primary"
+                            onClick={this.buttonHandler}>
+                            Create Trade
+                        </Button>
+                    </form>
+                </div>
+            </Container>
+        );
+    }
 }
 
-export default withRouter(CreateTrade);
+export default withStyles(useStyles)(CreateTrade);

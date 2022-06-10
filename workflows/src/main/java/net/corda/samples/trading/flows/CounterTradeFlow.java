@@ -1,5 +1,6 @@
 package net.corda.samples.trading.flows;
 
+import co.paralleluniverse.fibers.Suspendable;
 import com.google.common.collect.*;
 import net.corda.core.flows.*;
 import net.corda.core.identity.*;
@@ -67,6 +68,7 @@ public class CounterTradeFlow extends FlowLogic<SignedTransaction> {
     }
 
     @Override
+    @Suspendable
     public SignedTransaction call() throws FlowException {
         // Obtain a reference to the notary we want to use.
         Party notary = getServiceHub().getNetworkMapCache().getNotaryIdentities().get(0);
@@ -86,7 +88,7 @@ public class CounterTradeFlow extends FlowLogic<SignedTransaction> {
 
         counterTradeState.setTradeId(inputTrade.getTradeId());
 
-        TradeContract.CounterTrade command = new TradeContract.CounterTrade();
+        TradeContract.Commands.CounterTrade command = new TradeContract.Commands.CounterTrade();
         List<PublicKey> requiredSigns = ImmutableList.of(initiatingParty.getOwningKey(), counterTradeState.getCounterParty().getOwningKey());
 
         TransactionBuilder transactionBuilder = new TransactionBuilder(notary)

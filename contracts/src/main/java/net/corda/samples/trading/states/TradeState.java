@@ -1,18 +1,27 @@
 package net.corda.samples.trading.states;
 
 import com.google.common.collect.ImmutableList;
+import net.corda.core.contracts.BelongsToContract;
 import net.corda.core.contracts.ContractState;
+import net.corda.core.contracts.LinearState;
 import net.corda.core.contracts.UniqueIdentifier;
 import net.corda.core.identity.AbstractParty;
 import net.corda.core.identity.Party;
+import net.corda.samples.trading.contracts.TradeContract;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 
-public class TradeState implements ContractState {
+@BelongsToContract(TradeContract.class)
+public class TradeState implements ContractState, LinearState {
 
     public int sellValue; // sell value of the Trade
     public String sellCurrency; // sell currency for the Trade
+
+    public int getBuyValue() {
+        return buyValue;
+    }
+
     public int buyValue; // buy value of the Trade
     public String buyCurrency; // buy currency for the Trade
     public Party initiatingParty; // the party initiating the Trade
@@ -25,7 +34,7 @@ public class TradeState implements ContractState {
         this.sellCurrency = sellCurrency;
         this.buyValue = buyValue;
         this.buyCurrency = buyCurrency;
-        this.initiatingParty = initiatingParty;//initiatingParty;
+        this.initiatingParty = initiatingParty;
         this.counterParty = counterParty;
         this.tradeStatus = tradeStatus;
         this.linearId = linearId;
@@ -57,4 +66,9 @@ public class TradeState implements ContractState {
         return ImmutableList.of(initiatingParty, counterParty);
     }
 
+    @NotNull
+    @Override
+    public UniqueIdentifier getLinearId() {
+        return linearId;
+    }
 }
