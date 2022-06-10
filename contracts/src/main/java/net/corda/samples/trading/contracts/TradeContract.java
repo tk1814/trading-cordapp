@@ -38,10 +38,6 @@ public class TradeContract implements Contract {
     @Override
     public void verify(@NotNull LedgerTransaction tx) throws IllegalArgumentException {
 
-//        if (tx.getCommands().size() != 1) {
-//            throw new IllegalArgumentException("Transaction must have one command");
-//        }
-
         List<ContractState> inputs = tx.getInputStates();
         List<ContractState> outputs = tx.getOutputStates();
         Command command = tx.getCommand(0);
@@ -104,12 +100,15 @@ public class TradeContract implements Contract {
         }
 
     }
+
     /**
      * This contract implements command: Create and CounterTrade.
      */
     public interface Commands extends CommandData {
-        class Create implements Commands {}
+        class Create implements Commands {
+        }
 
-        class CounterTrade implements Commands {}
+        class CounterTrade implements Commands {
+        }
     }
 }

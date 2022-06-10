@@ -26,12 +26,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 
+import javax.ws.rs.Produces;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
 import org.springframework.http.ResponseEntity;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -58,11 +60,6 @@ public class Controller {
 
     private boolean isMe(NodeInfo nodeInfo) {
         return nodeInfo.getLegalIdentities().get(0).getName().equals(myLegalName);
-    }
-
-    private Party getPartyFromNodeInfo(NodeInfo nodeInfo) {
-        Party target = nodeInfo.getLegalIdentities().get(0);
-        return target;
     }
 
     public Controller(NodeRPCConnection rpc) {
@@ -116,13 +113,14 @@ public class Controller {
         //      .filter(name -> !name.getOrganisation().equals(myLegalName.getOrganisation()))
     }
 
-    // TODO: Fix /trades request
     /**
      * Displays all Trade states that exist in the node's vault.
      */
-    @RequestMapping(value = "/trades", method = RequestMethod.GET, produces = "application/json")
-    public List<StateAndRef<TradeState>> getTrades() {
-        return proxy.vaultQuery(TradeState.class).getStates();
+    @RequestMapping(value = "/trades", method = RequestMethod.GET)
+    public List<String> getTrades() {
+        List<StateAndRef<TradeState>> stateAndRefs = proxy.vaultQuery(TradeState.class).getStates();
+        List<String> tradeStates = stateAndRefs.stream().map(x -> x.getState().getData().toString()).collect(Collectors.toList());
+        return tradeStates;
     }
 
     /**
@@ -166,7 +164,7 @@ public class Controller {
                         buyCurrency,
                         proxy.wellKnownPartyFromX500Name(myLegalName),
                         proxy.wellKnownPartyFromX500Name(CordaX500Name.parse(counterParty)),
-                        "status",
+                        "Pending",
                         new UniqueIdentifier());
 
                 SignedTransaction signedTx = proxy.startTrackedFlowDynamic(TradeFlow.Initiator.class, tradeState).getReturnValue().get();
@@ -184,6 +182,7 @@ public class Controller {
     }
 
     // TODO complete counterTrade with createTrade code
+
     /**
      * Initiates Counter Trade Flow.
      */

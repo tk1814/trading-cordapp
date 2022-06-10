@@ -28,6 +28,10 @@ To install npm:
     - (close and reopen the terminal)
     - command -v nvm
     - nvm install --lts
+    
+To install UI packages:
+    - npm install @material-ui/lab
+    - npm install @mui/material @emotion/react @emotion/styled
 
 To start the react server:
     - cd clients/src/main/webapp

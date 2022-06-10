@@ -71,4 +71,10 @@ public class TradeState implements ContractState, LinearState {
     public UniqueIdentifier getLinearId() {
         return linearId;
     }
+
+    @Override
+    public String toString() {
+        return initiatingParty + "|" + counterParty + "|" + sellValue + " " + sellCurrency
+                + "|" + buyValue + " " + buyCurrency + "|" + tradeStatus + "|" + linearId;
+    }
 }

@@ -1,12 +1,18 @@
 import React, {Component} from 'react';
 import CssBaseline from '@material-ui/core/CssBaseline';
-import Grid from '@material-ui/core/Grid';
 import Typography from '@material-ui/core/Typography';
 import {withStyles} from '@material-ui/core/styles';
 import Container from '@material-ui/core/Container';
 import axios from 'axios';
 import corda_img from '../img/corda_img.png';
 import {URL} from "../CONSTANTS";
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableContainer from '@mui/material/TableContainer';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
+import Paper from '@mui/material/Paper';
 
 const useStyles = (theme) => ({
     paper: {
@@ -14,18 +20,7 @@ const useStyles = (theme) => ({
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-    },
-    avatar: {
-        margin: theme.spacing(1),
-        backgroundColor: theme.palette.secondary.main,
-    },
-    form: {
-        width: '100%', // Fix IE 11 issue.
-        marginTop: theme.spacing(3),
-    },
-    submit: {
-        margin: theme.spacing(3, 0, 2),
-    },
+    }
 });
 
 class Trades extends Component {
@@ -53,17 +48,30 @@ class Trades extends Component {
                 'Content-Type': 'application/json'
             }
         }).then(res => {
-            let trades = [];
-            console.log(trades);
+            let trades = res.data;
 
+            trades.forEach(function (item, index) {
+                trades[index] = item.split("|");
+            });
+            this.setState({trades});
+
+        }).catch(e => {
+            console.log(e);
         });
     }
 
+    getPartyfromPort() {
+        if (localStorage.getItem('port') === '10056') {
+            return 'PartyA'
+        } else if (localStorage.getItem('port') === '10057') {
+            return 'PartyB'
+        }
+    }
 
     render() {
         const {classes} = this.props;
         return (
-            <Container component="main" maxWidth="sm">
+            <Container component="main" maxWidth="lg">
                 <CssBaseline/>
                 <div className={classes.paper}>
 
@@ -74,14 +82,36 @@ class Trades extends Component {
                     <Typography component="h1" variant="h2">
                         Trades
                     </Typography>
+                    <br/><br/>
 
-                    <form className={classes.form} id="trades" noValidate>
+                    <TableContainer className={classes.table} component={Paper}>
+                        <Table sx={{minWidth: 650}} aria-label="simple table">
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell>Initiating Party</TableCell>
+                                    <TableCell align="left">Counter Party</TableCell>
+                                    <TableCell align="left">Sell Value</TableCell>
+                                    <TableCell align="left">Buy Value</TableCell>
+                                    <TableCell align="left">Trade status</TableCell>
+                                    <TableCell align="left">Trade ID</TableCell>
+                                </TableRow>
+                            </TableHead>
 
-                        <Grid container spacing={2}>
-                            <Grid item xs={12} sm={12}>
-                            </Grid>
-                        </Grid>
-                    </form>
+                            <TableBody>
+                                {this.state.trades.map((row, index) => (
+                                    <TableRow key={index} sx={{'&:last-child td, &:last-child th': {border: 0}}}>
+                                        {row.map((item, idx) => {
+                                            if (row[0].includes(this.getPartyfromPort())) {
+                                                return <TableCell key={idx} component="th"
+                                                                  scope="row">{item}</TableCell>
+                                            }
+                                        })}
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+
                 </div>
             </Container>
         );

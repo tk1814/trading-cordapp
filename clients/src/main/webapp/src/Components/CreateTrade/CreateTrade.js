@@ -142,7 +142,7 @@ class CreateTrade extends Component {
                 console.log(response);
                 this.setState({response});
                 if (response.includes("committed to ledger")) {
-                    // this.redirectToTrades();
+                    this.redirectToTrades();
                 }
             }
         }).catch(e => {
@@ -155,12 +155,6 @@ class CreateTrade extends Component {
         const {history} = this.props;
         if (history) history.push('/trades');
     }
-// useEffect(() => {
-//     if (response !== null) {
-//         let path = "/created";
-//         history.push(path);
-//     }
-// }, [response]); // eslint-disable-line react-hooks/exhaustive-deps
 
     render() {
         const {classes} = this.props;
