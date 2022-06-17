@@ -38,11 +38,11 @@ class CreateTrade extends Component {
         this.state = {
             nodes: [],
             peers: [],
-            counterParty: null,
+            counterParty: "null",
             sellValue: 1,
-            sellCurrency: "GBP",
+            sellQuantity: 1,
             buyValue: 1,
-            buyCurrency: "EUR",
+            buyQuantity: 1,
             response: null,
         }
     }
@@ -109,24 +109,24 @@ class CreateTrade extends Component {
     sellValueChange = (e) => {
         this.setState({sellValue: e.target.value});
     }
-    buyCurrencyChange = (e) => {
-        this.setState({buyCurrency: e.target.value});
+    buyQuantityChange = (e) => {
+        this.setState({buyQuantity: e.target.value});
     }
-    sellCurrencyChange = (e) => {
-        this.setState({sellCurrency: e.target.value});
+    sellQuantityChange = (e) => {
+        this.setState({sellQuantity: e.target.value});
     }
 
     buttonHandler = (e) => {
         e.preventDefault();
 
-        console.log([this.state.counterParty, this.state.sellValue, this.state.sellCurrency, this.state.buyValue, this.state.buyCurrency]);
+        // console.log([this.state.counterParty, this.state.sellValue, this.state.sellQuantity, this.state.buyValue, this.state.buyQuantity]);
 
         const data = {
             counterParty: this.state.counterParty,
             sellValue: this.state.sellValue,
-            sellCurrency: this.state.sellCurrency,
+            sellQuantity: this.state.sellQuantity,
             buyValue: this.state.buyValue,
-            buyCurrency: this.state.buyCurrency,
+            buyQuantity: this.state.buyQuantity,
         }
 
         let PORT = localStorage.getItem('port');
@@ -173,6 +173,8 @@ class CreateTrade extends Component {
                         Trading CordApp
                     </Typography>
 
+                    <br/><br/>
+
                     <FormControl required fullWidth>
                         <InputLabel id="demo-simple-select-label">Initiating Party</InputLabel>
                         <Select
@@ -193,25 +195,6 @@ class CreateTrade extends Component {
 
                         <Grid container spacing={2}>
 
-                            <Grid item xs={12} sm={12}>
-
-                                <FormControl required fullWidth>
-                                    <InputLabel id="demo-simple-select-label">Counter Party</InputLabel>
-                                    <Select
-                                        defaultValue={''}
-                                        name="counterParty"
-                                        id="counterParty"
-                                        label="Counter Party"
-                                        onChange={this.counterPartyChange}>
-                                        {this.state.peers.map((peer, key) => (
-                                            <MenuItem
-                                                key={key}
-                                                value={peer}>{peer}
-                                            </MenuItem>))}
-                                    </Select>
-                                </FormControl>
-                            </Grid>
-
                             <Grid item xs={12} sm={6}>
                                 <TextField
                                     autoComplete="fname"
@@ -220,7 +203,7 @@ class CreateTrade extends Component {
                                     required
                                     fullWidth
                                     id="sellValue"
-                                    label="Sell Value"
+                                    label="Sell Stock Value (GBP)"
                                     placeholder=""
                                     onChange={this.sellValueChange}
                                     error={this.state.sellValue === ""}
@@ -228,19 +211,20 @@ class CreateTrade extends Component {
                                 />
                             </Grid>
                             <Grid item xs={12} sm={6}>
+
                                 <TextField
                                     variant="outlined"
                                     required
                                     fullWidth
-                                    id="sellCurrency"
-                                    label="Sell Currency"
-                                    name="sellCurrency"
-                                    autoComplete="sellCurrency"
+                                    id="sellQuantity"
+                                    label="Sell Quantity"
+                                    name="sellQuantity"
+                                    autoComplete="sellQuantity"
                                     // type="email"
-                                    placeholder="GBP"
-                                    onChange={this.sellCurrencyChange}
-                                    error={this.sellCurrency === ""}
-                                    helperText={this.sellCurrency === "" ? 'Empty field!' : ' '}
+                                    placeholder=""
+                                    onChange={this.sellQuantityChange}
+                                    error={this.sellQuantity === ""}
+                                    helperText={this.sellQuantity === "" ? 'Empty field!' : ' '}
                                 />
                             </Grid>
 
@@ -252,7 +236,7 @@ class CreateTrade extends Component {
                                     required
                                     fullWidth
                                     id="buyValue"
-                                    label="Buy Value"
+                                    label="Buy Stock Value (GBP)"
                                     placeholder=""
                                     onChange={this.buyValueChange}
                                     error={this.state.buyValue === ""}
@@ -264,19 +248,16 @@ class CreateTrade extends Component {
                                     variant="outlined"
                                     required
                                     fullWidth
-                                    id="buyCurrency"
-                                    label="Buy Currency"
-                                    name="buyCurrency"
+                                    id="buyQuantity"
+                                    label="Buy Quantity"
+                                    name="buyQuantity"
                                     // autoComplete="email"
                                     type="text"
-                                    placeholder="EUR"
-                                    onChange={this.buyCurrencyChange}
-                                    error={this.state.buyCurrency === ""}
-                                    helperText={this.state.buyCurrency === "" ? 'Empty field!' : ' '}
+                                    placeholder=""
+                                    onChange={this.buyQuantityChange}
+                                    error={this.state.buyQuantity === ""}
+                                    helperText={this.state.buyQuantity === "" ? 'Empty field!' : ' '}
                                 />
-                            </Grid>
-
-                            <Grid item xs={12}>
                             </Grid>
                         </Grid>
 

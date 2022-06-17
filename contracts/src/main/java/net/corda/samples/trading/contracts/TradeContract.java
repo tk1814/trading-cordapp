@@ -11,7 +11,6 @@ import java.security.PublicKey;
 import java.util.List;
 
 import net.corda.samples.trading.states.TradeState;
-import net.corda.samples.trading.contracts.TradeContract;
 
 import static net.corda.core.contracts.ContractsDSL.requireThat;
 
@@ -62,14 +61,14 @@ public class TradeContract implements Contract {
                 // require.using("All the participants must be signers.", command.signers.containsAll(out.participants.map { it.owningKey }));
 
                 // Trade-specific constraints.
-                require.using("The sell currency and the buy currency cannot be the same entity.", output.sellCurrency != output.buyCurrency);
-                require.using("The Trade's sell value must be non-negative.", output.sellValue > 0);
-                require.using("The Trade's buy value must be non-negative.", output.buyValue > 0);
-                require.using("The Trade's sell currency can't be empty.", !output.sellCurrency.isEmpty());
-                require.using("The Trade's buy currency can't be empty.", !output.buyCurrency.isEmpty());
+                //  require.using("The sell quantity and the buy quantity cannot be the same entity.", output.sellQuantity != output.buyQuantity);
+                require.using("The Trade's sell value must be non-negative.", output.sellValue >= 0);
+                require.using("The Trade's buy value must be non-negative.", output.buyValue >= 0);
+                require.using("The Trade's sell quantity can't be empty.", output.sellQuantity >= 0);
+                require.using("The Trade's buy quantity can't be empty.", output.buyQuantity >= 0);
 
                 require.using("InitiatingParty must sign Trade", requiredSigners.contains(output.getInitiatingParty().getOwningKey()));
-                require.using("CounterParty must sign Trade", requiredSigners.contains(output.getCounterParty().getOwningKey()));
+                //  require.using("CounterParty must sign Trade", requiredSigners.contains(output.getCounterParty().getOwningKey()));
 
                 return null;
             });
@@ -84,11 +83,11 @@ public class TradeContract implements Contract {
                 // require.using("All of the participants must be signers.", command.signers.containsAll(output.participants.map { it.owningKey }));
 
                 // Trade-specific constraints.
-                require.using("The sell currency and the buy currency cannot be the same entity.", output.sellCurrency != output.buyCurrency);
-                require.using("The Trade's sell value must be non-negative.", output.sellValue > 0);
-                require.using("The Trade's buy value must be non-negative.", output.buyValue > 0);
-                require.using("The Trade's sell currency can't be empty.", !output.sellCurrency.isEmpty());
-                require.using("The Trade's buy currency can't be empty.", !output.buyCurrency.isEmpty());
+                //  require.using("The sell quantity and the buy quantity cannot be the same entity.", output.sellQuantity != output.buyQuantity);
+                require.using("The Trade's sell value must be non-negative.", output.sellValue >= 0);
+                require.using("The Trade's buy value must be non-negative.", output.buyValue >= 0);
+                require.using("The Trade's sell quantity can't be empty.", output.sellQuantity >= 0);
+                require.using("The Trade's buy quantity can't be empty.", output.buyQuantity >= 0);
 
                 require.using("InitiatingParty must sign Trade", requiredSigners.contains(output.getInitiatingParty().getOwningKey()));
                 require.using("CounterParty must sign Trade", requiredSigners.contains(output.getCounterParty().getOwningKey()));

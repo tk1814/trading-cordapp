@@ -67,7 +67,7 @@ public class Controller {
         this.myLegalName = proxy.nodeInfo().getLegalIdentities().get(0).getName();
     }
 
-    @RequestMapping(value = "/me", method = RequestMethod.POST, produces = "application/json")
+    @RequestMapping(value = "/me", method = RequestMethod.GET, produces = "application/json")
     @ResponseStatus(HttpStatus.OK)
     @ResponseBody
     public Map<String, CordaX500Name> whoami() {
@@ -100,7 +100,7 @@ public class Controller {
      * Returns all parties registered with the [NetworkMapService]. These names can be used to look up identities
      * using the [IdentityService].
      */
-    @RequestMapping(value = "/peers", method = RequestMethod.GET) //@Produces(MediaType.APPLICATION_JSON)
+    @RequestMapping(value = "/peers", method = RequestMethod.GET)
     public Map<String, List<CordaX500Name>> getPeers() {
 
         List<NodeInfo> nodes = proxy.networkMapSnapshot();
@@ -132,38 +132,28 @@ public class Controller {
 
         JsonObject convertedObject = new Gson().fromJson(payload, JsonObject.class);
 
-        String counterParty = convertedObject.get("counterParty").getAsString();
-        int sellValue = convertedObject.get("sellValue").getAsInt();
-        String sellCurrency = convertedObject.get("sellCurrency").getAsString();
-        int buyValue = convertedObject.get("buyValue").getAsInt();
-        String buyCurrency = convertedObject.get("buyCurrency").getAsString();
+        double sellValue = convertedObject.get("sellValue").getAsDouble();
+        int sellQuantity = convertedObject.get("sellQuantity").getAsInt();
+        double buyValue = convertedObject.get("buyValue").getAsDouble();
+        int buyQuantity = convertedObject.get("buyQuantity").getAsInt();
 
         JsonObject resp = new JsonObject();
 
-        if (counterParty == null) {
-            resp.addProperty("Response", "Query parameter 'Counter partyName' missing or has wrong format.\n");
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
-        }
-        if (sellValue <= 0) {
+        if (sellValue < 0) {
             resp.addProperty("Response", "Query parameter 'Sell Value' must be non-negative.\n");
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
         }
-        if (buyValue <= 0) {
+        if (buyValue < 0) {
             resp.addProperty("Response", "Query parameter 'Buy Value' must be non-negative.\n");
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
-        }
-        if (proxy.wellKnownPartyFromX500Name(CordaX500Name.parse(counterParty)) == null) {
-            resp.addProperty("Response", "Counter Party named \" + counterParty + \" cannot be found.\\n");
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
         } else {
-
             try {
                 TradeState tradeState = new TradeState(sellValue,
-                        sellCurrency,
+                        sellQuantity,
                         buyValue,
-                        buyCurrency,
+                        buyQuantity,
                         proxy.wellKnownPartyFromX500Name(myLegalName),
-                        proxy.wellKnownPartyFromX500Name(CordaX500Name.parse(counterParty)),
+                        null,
                         "Pending",
                         new UniqueIdentifier());
 
@@ -181,51 +171,58 @@ public class Controller {
 
     }
 
-    // TODO complete counterTrade with createTrade code
-
     /**
      * Initiates Counter Trade Flow.
      */
-    @RequestMapping(value = "/counterTrade", method = RequestMethod.PUT)
-    public Response counterTrade(@QueryParam("sellValue") int sellValue,
-                                 @QueryParam("sellCurrency") String sellCurrency,
-                                 @QueryParam("buyValue") int buyValue,
-                                 @QueryParam("buyCurrency") String buyCurrency,
-                                 @QueryParam("counterParty") CordaX500Name counterParty,
-                                 @QueryParam("tradeStatus") String tradeStatus) {
+    @RequestMapping(value = "/counterTrade", method = RequestMethod.POST)
+    public ResponseEntity<String> counterTrade(@RequestBody String payload) {
+        System.out.println(payload);
+        JsonObject convertedObject = new Gson().fromJson(payload, JsonObject.class);
 
-        System.out.println("Counter trade command");
-        if (this.proxy.wellKnownPartyFromX500Name(counterParty) == null) {
-            return Response.status(Status.BAD_REQUEST).entity("Counter Party named " + counterParty + " cannot be found.\n").build();
+        String initiatingParty = convertedObject.get("initiatingParty").getAsString();
+        String counterParty = convertedObject.get("counterParty").getAsString();
+        double sellValue = convertedObject.get("sellValue").getAsDouble();
+        int sellQuantity = convertedObject.get("sellQuantity").getAsInt();
+        double buyValue = convertedObject.get("buyValue").getAsDouble();
+        int buyQuantity = convertedObject.get("buyQuantity").getAsInt();
+        String tradeStatus = convertedObject.get("tradeStatus").getAsString();
+        String tradeID = convertedObject.get("tradeID").getAsString();
+
+        JsonObject resp = new JsonObject();
+
+        if (counterParty == null) {
+            resp.addProperty("Response", "Query parameter 'Counter partyName' missing or has wrong format.\n");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
+        } else if (proxy.wellKnownPartyFromX500Name(CordaX500Name.parse(counterParty)) == null) {
+            resp.addProperty("Response", "Counter Party named \" + counterParty + \" cannot be found.\\n");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
         } else {
             try {
-                TradeState tradestate = new TradeState(
+                UniqueIdentifier linearId = new UniqueIdentifier(null, UUID.fromString(tradeID));
+                TradeState counterTradeState = new TradeState(
                         sellValue,
-                        sellCurrency,
+                        sellQuantity,
                         buyValue,
-                        buyCurrency,
-                        this.proxy.wellKnownPartyFromX500Name(myLegalName),
-                        this.proxy.wellKnownPartyFromX500Name(counterParty),
-                        tradeStatus, null);
+                        buyQuantity,
+                        this.proxy.wellKnownPartyFromX500Name(CordaX500Name.parse(initiatingParty)),
+                        this.proxy.wellKnownPartyFromX500Name(CordaX500Name.parse(counterParty)),
+                        tradeStatus, linearId);
 
-                SignedTransaction signedTx = proxy.startFlowDynamic(CounterTradeFlow.class, tradestate)
-                        .getReturnValue().get();
-
+                SignedTransaction signedTx = proxy.startTrackedFlowDynamic(CounterTradeFlow.CounterInitiator.class, counterTradeState).getReturnValue().get();
                 System.out.println("signedTx.getId() =  :" + signedTx.getId());
-                return Response.status(Status.CREATED).entity("Transaction id " + signedTx.getId() + " committed to ledger.\n").build();
-
+                resp.addProperty("Response", "Transaction id " + signedTx.getId() + " committed to ledger.\n");
+                return ResponseEntity.status(HttpStatus.ACCEPTED).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
             } catch (Exception ex) {
-
-                return Response.status(Status.BAD_REQUEST).entity(ex.getMessage()).build();
+                System.out.println("Exception : " + ex.getMessage());
+                resp.addProperty("Response", ex.getMessage());
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
             }
         }
-
     }
 
     /**
      * Get full Trade details.
      */
-//    @Produces(MediaType.APPLICATION_JSON)
     @RequestMapping(value = "/getTrade", method = RequestMethod.GET)
     public Response gettrades(@QueryParam("tradeId") String tradeId) {
         if (tradeId == null) {
