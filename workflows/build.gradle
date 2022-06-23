@@ -59,7 +59,8 @@ dependencies {
     compile 'com.sendgrid:sendgrid-java:4.7.0'
 
     // CorDapp dependencies.
-    cordapp project(":contracts")
+    cordaCompile project(":contracts")
+    cordaCompile project(":notaries")
 }
 
 task integrationTest(type: Test, dependsOn: []) {
