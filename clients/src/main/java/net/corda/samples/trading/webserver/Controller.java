@@ -3,46 +3,35 @@ package net.corda.samples.trading.webserver;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-
-import net.corda.core.concurrent.CordaFuture;
+import net.corda.core.contracts.Amount;
 import net.corda.core.contracts.StateAndRef;
-import net.corda.core.crypto.SecureHash;
-import net.corda.core.transactions.SignedTransaction;
-import net.corda.core.transactions.WireTransaction;
-import net.corda.samples.trading.flows.CounterTradeFlow;
-import net.corda.samples.trading.flows.TradeFlow;
+import net.corda.core.contracts.TransactionVerificationException;
 import net.corda.core.contracts.UniqueIdentifier;
 import net.corda.core.identity.CordaX500Name;
-import net.corda.core.identity.Party;
 import net.corda.core.messaging.CordaRPCOps;
 import net.corda.core.node.NodeInfo;
-
+import net.corda.core.transactions.SignedTransaction;
+import net.corda.core.utilities.OpaqueBytes;
+import net.corda.finance.contracts.asset.Cash;
+import net.corda.finance.flows.CashIssueAndPaymentFlow;
+import net.corda.samples.trading.flows.IssueStockFlow;
+import net.corda.samples.trading.flows.SettleTradeFlow;
+import net.corda.samples.trading.flows.TradeFlow;
+import net.corda.samples.trading.states.StockState;
 import net.corda.samples.trading.states.TradeState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
-
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
-import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
-
-import org.springframework.web.bind.annotation.*;
-
-import javax.ws.rs.QueryParam;
-
 
 /**
  * Define your API endpoints here.
@@ -84,11 +73,11 @@ public class Controller {
         return ResponseEntity.status(HttpStatus.CREATED).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
     }
 
-    @RequestMapping(value = "/nodes", method = RequestMethod.GET) //@Produces(MediaType.APPLICATION_JSON)
+    @RequestMapping(value = "/nodes", method = RequestMethod.GET)
     public Map<String, List<CordaX500Name>> getNodes() {
 
         List<NodeInfo> nodes = proxy.networkMapSnapshot();
-        System.out.println("Nodes :" + nodes);
+        //System.out.println("Nodes :" + nodes);
         return ImmutableMap.of("nodes", nodes
                 .stream()
                 .map(node -> node.getLegalIdentities().get(0).getName())
@@ -104,7 +93,7 @@ public class Controller {
     public Map<String, List<CordaX500Name>> getPeers() {
 
         List<NodeInfo> nodes = proxy.networkMapSnapshot();
-        System.out.println("Peers :" + nodes);
+        //System.out.println("Peers :" + nodes);
         return ImmutableMap.of("peers", nodes
                 .stream()
                 .map(node -> node.getLegalIdentities().get(0).getName())
@@ -139,6 +128,8 @@ public class Controller {
 
         JsonObject resp = new JsonObject();
 
+        // TODO: add checks: unable to sell more stocks than they own, and spending more than they have
+        //  add checks in UI as well
         if (sellValue < 0) {
             resp.addProperty("Response", "Query parameter 'Sell Value' must be non-negative.\n");
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
@@ -208,7 +199,8 @@ public class Controller {
                         this.proxy.wellKnownPartyFromX500Name(CordaX500Name.parse(counterParty)),
                         tradeStatus, linearId);
 
-                SignedTransaction signedTx = proxy.startTrackedFlowDynamic(CounterTradeFlow.CounterInitiator.class, counterTradeState).getReturnValue().get();
+                SignedTransaction signedTx = proxy.startTrackedFlowDynamic(SettleTradeFlow.class, counterTradeState).getReturnValue().get();
+
                 System.out.println("signedTx.getId() =  :" + signedTx.getId());
                 resp.addProperty("Response", "Transaction id " + signedTx.getId() + " committed to ledger.\n");
                 return ResponseEntity.status(HttpStatus.ACCEPTED).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
@@ -220,25 +212,100 @@ public class Controller {
         }
     }
 
-    /**
-     * Get full Trade details.
-     */
-    @RequestMapping(value = "/getTrade", method = RequestMethod.GET)
-    public Response gettrades(@QueryParam("tradeId") String tradeId) {
-        if (tradeId == null) {
-            return Response.status(Status.BAD_REQUEST).entity("Query parameter 'linearID' missing or has wrong format.\n").build();
+    @RequestMapping(value = "/issueStock", method = RequestMethod.POST)
+    public ResponseEntity<String> issueStock(@RequestBody String payload) {
+        System.out.println(payload);
+        JsonObject convertedObject = new Gson().fromJson(payload, JsonObject.class);
+
+        int amount = convertedObject.get("amount").getAsInt();
+        JsonObject resp = new JsonObject();
+
+        if (amount <= 0) {
+            resp.addProperty("Response", "Query parameter 'Amount' must be non-negative.\n");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
+        } else {
+            try {
+                StockState stockState = new StockState(proxy.wellKnownPartyFromX500Name(myLegalName),
+                        proxy.wellKnownPartyFromX500Name(myLegalName), amount);
+                proxy.startFlowDynamic(IssueStockFlow.class, stockState).getReturnValue().get();
+                resp.addProperty("Response", "Success");
+                resp.addProperty("Amount", amount);
+                return ResponseEntity.status(HttpStatus.ACCEPTED).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
+
+            } catch (Exception e) {
+                resp.addProperty("Exception :", e.getMessage());
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
+            }
         }
-//        QueryCriteria.LinearStateQueryCriteria("tradeId")
-//        val idParts = linearID.split('_')
-//        val uuid = idParts[idParts.size - 1]
-//
-//        val criteria = QueryCriteria.LinearStateQueryCriteria(linearId = listOf(UniqueIdentifier.fromString(uuid)),status = Vault.StateStatus.ALL)
-//        return try {
-//            Response.ok(rpcOps.vaultQueryBy<TradeState>(criteria=criteria).states).build()
-//        } catch (ex: Throwable) {
-//            logger.error(ex.message, ex)
-//            Response.status(BAD_REQUEST).entity(ex.message!!).build()
-//        }
-        return null;
+    }
+
+    @RequestMapping(value = "/getStockList", method = RequestMethod.GET)
+    public List<Integer> getAssetList() {
+        List<Integer> stockAmount = proxy.vaultQuery(StockState.class).getStates().stream()
+                .filter(x -> x.getState().getData().getOwner().equals(proxy.wellKnownPartyFromX500Name(myLegalName)))
+                .map(x -> x.getState().getData().getAmount()).collect(Collectors.toList());
+        return stockAmount;
+    }
+
+    /**
+     * Initiates a flow that self-issues cash and then send this to a recipient.
+     */
+    @RequestMapping(value = "/issueCash", method = RequestMethod.POST)
+    public ResponseEntity<String> issueCash(@RequestBody String payload) {
+        System.out.println(payload);
+        JsonObject convertedObject = new Gson().fromJson(payload, JsonObject.class);
+
+        int amount = convertedObject.get("amount").getAsInt();
+
+        JsonObject resp = new JsonObject();
+        try {
+            proxy.startFlowDynamic(CashIssueAndPaymentFlow.class,
+                            Amount.parseCurrency(amount + " GBP"),
+                            OpaqueBytes.of("PartyA".getBytes()),
+                            proxy.wellKnownPartyFromX500Name(myLegalName),
+                            false,
+                            proxy.notaryIdentities().get(0))
+                    .getReturnValue().get();
+
+            resp.addProperty("Response", "Success");
+            resp.addProperty("Amount", amount);
+            return ResponseEntity.status(HttpStatus.ACCEPTED).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
+
+        } catch (ExecutionException e) {
+            if (e.getCause() != null && e.getCause().getClass().equals(TransactionVerificationException.ContractRejection.class)) {
+                resp.addProperty("ExecutionException : ", e.getCause().getMessage());
+            } else {
+                resp.addProperty("ExecutionException : ", e.getMessage());
+            }
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
+        } catch (Exception e) {
+            resp.addProperty("Exception : ", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
+        }
+    }
+
+    @RequestMapping(value = "/getCashBalance", method = RequestMethod.GET)
+    public ResponseEntity<String> getCashBalance() {
+        JsonObject resp = new JsonObject();
+
+        try {
+            List<StateAndRef<Cash.State>> cashStateList = proxy.vaultQuery(Cash.State.class).getStates();
+            Long amount = 0L;
+            if (cashStateList.size() > 0) {
+                amount = cashStateList.stream().map(stateStateAndRef ->
+                        stateStateAndRef.getState().getData().getAmount().getQuantity()).reduce(Long::sum).get();
+                if (amount >= 100) {
+                    amount = amount / 100;
+                } else {
+                    amount = 0L;
+                }
+            }
+            resp.addProperty("Amount", amount);
+            return ResponseEntity.status(HttpStatus.ACCEPTED).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
+
+        } catch (Exception e) {
+            resp.addProperty("Exception :", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
+        }
     }
 }

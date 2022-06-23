@@ -19,12 +19,26 @@ public class TradeState implements ContractState, LinearState {
     public double sellValue; // sell value of the Trade
     public int sellQuantity; // sell quantity for the Trade
     public double buyValue; // buy value of the Trade
+
+    public double getSellValue() {
+        return sellValue;
+    }
+
+    public int getSellQuantity() {
+        return sellQuantity;
+    }
+
+    public int getBuyQuantity() {
+        return buyQuantity;
+    }
+
     public int buyQuantity; // buy quantity for the Trade
     public Party initiatingParty; // the party initiating the Trade
     @Nullable
     public Party counterParty = null; // the Trade Counterparty
     public String tradeStatus; // the Trade Status
-    private UniqueIdentifier linearId = new UniqueIdentifier(); // Unique ID for the Trade
+    private UniqueIdentifier linearId;// = new UniqueIdentifier(); // Unique ID for the Trade
+    private String timestamp; // TODO
 
     public TradeState(double sellValue, int sellQuantity, double buyValue, int buyQuantity, Party initiatingParty, Party counterParty, String tradeStatus, UniqueIdentifier linearId) {
         this.sellValue = sellValue;

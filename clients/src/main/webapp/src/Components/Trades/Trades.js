@@ -1,6 +1,6 @@
 import React, {Component} from 'react';
 import CssBaseline from '@material-ui/core/CssBaseline';
-import Typography from '@material-ui/core/Typography';
+import Typography from '@mui/material/Typography';
 import {withStyles} from '@material-ui/core/styles';
 import Container from '@material-ui/core/Container';
 import axios from 'axios';
@@ -15,6 +15,9 @@ import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import Button from '@mui/material/Button';
 import * as PropTypes from "prop-types";
+import Box from "@mui/material/Box";
+import AppBar from "@mui/material/AppBar";
+import Toolbar from "@mui/material/Toolbar";
 
 const useStyles = (theme) => ({
     paper: {
@@ -40,8 +43,8 @@ class Trades extends Component {
         super(props);
         this.state = {
             trades: [],
-            tradesA: [],
-            tradesB: [],
+            balance: 0,
+            stockBalance: 0,
         }
     }
 
@@ -51,8 +54,38 @@ class Trades extends Component {
         if (localStorage.getItem('port') === null) {
             localStorage.setItem('port', '10056');
         }
+        this.getStockQuantity();
+        this.getBalance();
         this.getCounterParty();
         this.getTrades();
+    }
+
+    getStockQuantity() {
+        let PORT = localStorage.getItem('port');
+        axios.get(URL + PORT + "/getStockList", {
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+                'Content-Type': 'application/json'
+            }
+        }).then(res => {
+            console.log(res.data)
+            let stockBalance = res.data;
+            if (stockBalance.length !== 0) {
+                this.setState({stockBalance: res.data[0]});
+            }
+        });
+    }
+
+    getBalance() {
+        let PORT = localStorage.getItem('port');
+        axios.get(URL + PORT + "/getCashBalance", {
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+                'Content-Type': 'application/json'
+            }
+        }).then(res => {
+            this.setState({balance: res.data.Amount});
+        });
     }
 
     getCounterParty() {
@@ -112,7 +145,6 @@ class Trades extends Component {
             tradeStatus: "Accepted",
             tradeID: partyTrades[index][7],
         }
-        // console.log(data);
 
         let PORT = localStorage.getItem('port');
         axios.post(URL + PORT + '/counterTrade', data, {
@@ -135,13 +167,27 @@ class Trades extends Component {
     render() {
         const {classes} = this.props;
         return (
+            <div>
+                <Container component="main" maxWidth="lg">
+                    <Box sx={{flexGrow: 1}}>
+                        <AppBar position="static">
+                            <Toolbar style={{marginRight: "20px"}}>
+                                <img src={corda_img} style={{width: "100px"}} alt="corda logo"/>
+                                <Typography variant="h7" component="div" sx={{flexGrow: 1}}>
+                                    <h2>{localStorage.getItem('currentNode')}</h2>
+                                </Typography>
+                                <h3>
+                                    Balance: <br/> {this.state.balance} GBP <br/>
+                                    {this.state.stockBalance} Stocks
+                                </h3>
+                            </Toolbar>
+                        </AppBar>
+                    </Box>
+                </Container>
+
             <Container component="main" maxWidth="lg">
                 <CssBaseline/>
                 <div className={classes.paper}>
-
-                    <h2>{localStorage.getItem('currentNode')}</h2>
-
-                    <img src={corda_img} alt="corda logo"/>
 
                     <Typography component="h1" variant="h3">
                         Trade History
@@ -240,6 +286,7 @@ class Trades extends Component {
                     <br/><br/>
                 </div>
             </Container>
+            </div>
         );
     }
 }

@@ -20,10 +20,10 @@ import java.util.stream.*;
 import static net.corda.core.contracts.ContractsDSL.requireThat;
 
 /**
- * This flow allows two parties (the [Initiator] and the [Acceptor]) to come to an agreement about the Trade encapsulated
+ * This flow allows two parties (the [Initiator] and the [Responder]) to come to an agreement about the Trade encapsulated
  * within an [TradeState].
  * <p>
- * In our simple trading, the [Acceptor] always accepts a valid Trade.
+ * In our simple trading, the [Responder] always accepts a valid Trade.
  * <p>
  * These flows have deliberately been implemented by using only the call() method for ease of understanding. In
  * practice we would recommend splitting up the various stages of the flow into sub-routines.
@@ -89,7 +89,7 @@ public class CounterTradeFlow {
                 throw new RuntimeException("Trade state with trade ID: " + this.counterTradeState.getTradeId() + " was not found in the vault.");
             }
             StateAndRef<TradeState> inputTradeState = inputTradeStateList.get(0);
-            System.out.println(inputTradeState);
+            // System.out.println(inputTradeState);
 
             TradeContract.Commands.CounterTrade command = new TradeContract.Commands.CounterTrade();
             List<PublicKey> requiredSigns = ImmutableList.of(counterTradeState.getInitiatingParty().getOwningKey(), counterTradeState.getCounterParty().getOwningKey());
