@@ -57,10 +57,11 @@ dependencies {
     // SendGrid
     implementation 'com.sendgrid:sendgrid-java:4.7.0'
     compile 'com.sendgrid:sendgrid-java:4.7.0'
+    compile 'com.github.bft-smart:library:master-v1.1-beta-g6215ec8-87' // added
+    cordaCompile "$corda_release_group:corda-node:$corda_release_version" // added
 
     // CorDapp dependencies.
-    cordaCompile project(":contracts")
-    cordaCompile project(":notaries")
+    cordapp project(":contracts")
 }
 
 task integrationTest(type: Test, dependsOn: []) {
