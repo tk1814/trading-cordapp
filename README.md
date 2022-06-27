@@ -33,6 +33,7 @@ To install UI packages:
     - npm install @material-ui/lab
     - npm install @mui/material @emotion/react @emotion/styled
     - npm install @mui/icons-material
+    - npm install @mui/lab
 
 To start the react server:
     - cd clients/src/main/webapp

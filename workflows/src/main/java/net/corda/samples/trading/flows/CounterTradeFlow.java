@@ -110,7 +110,15 @@ public class CounterTradeFlow {
             // Stage 4.
             progressTracker.setCurrentStep(GATHERING_SIGS);
             // Send the state to the initiating party, and receive it back with their signature.
-            FlowSession otherPartyFlow = initiateFlow(counterTradeState.getInitiatingParty());
+
+            FlowSession otherPartyFlow;
+            if (getOurIdentity().equals(counterTradeState.getInitiatingParty()))
+                otherPartyFlow = initiateFlow(counterTradeState.getCounterParty());
+            else if (getOurIdentity().equals(counterTradeState.getCounterParty()))
+                otherPartyFlow = initiateFlow(counterTradeState.getInitiatingParty());
+            else
+                throw new RuntimeException("Trade settlement flow is called by a third party - not involved in the transaction");
+
             SignedTransaction fullySignedTx = subFlow(
                     new CollectSignaturesFlow(partSignedTx, ImmutableSet.of(otherPartyFlow), GATHERING_SIGS.childProgressTracker()));
 

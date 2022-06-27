@@ -39,8 +39,9 @@ public class TradeState implements ContractState, LinearState {
     public String tradeStatus; // the Trade Status
     private UniqueIdentifier linearId;// = new UniqueIdentifier(); // Unique ID for the Trade
     private String timestamp; // TODO
+    public String stockName;
 
-    public TradeState(double sellValue, int sellQuantity, double buyValue, int buyQuantity, Party initiatingParty, Party counterParty, String tradeStatus, UniqueIdentifier linearId) {
+    public TradeState(double sellValue, int sellQuantity, double buyValue, int buyQuantity, Party initiatingParty, Party counterParty, String tradeStatus, UniqueIdentifier linearId, String stockName) {
         this.sellValue = sellValue;
         this.sellQuantity = sellQuantity;
         this.buyValue = buyValue;
@@ -51,6 +52,7 @@ public class TradeState implements ContractState, LinearState {
         }
         this.tradeStatus = tradeStatus;
         this.linearId = linearId;
+        this.stockName = stockName;
     }
 
     public double getBuyValue() {
@@ -78,6 +80,14 @@ public class TradeState implements ContractState, LinearState {
         this.linearId = linearId;
     }
 
+    public String getStockName() {
+        return stockName;
+    }
+
+    public void setStockName(String stockName) {
+        this.stockName = stockName;
+    }
+
     /*
      * A participant is any party that should be notified
      * when the state is created or consumed.
@@ -100,6 +110,6 @@ public class TradeState implements ContractState, LinearState {
     @Override
     public String toString() {
         return initiatingParty + "|" + counterParty + "|" + sellValue + "|" + sellQuantity
-                + "|" + buyValue + "|" + buyQuantity + "|" + tradeStatus + "|" + linearId;
+                + "|" + buyValue + "|" + buyQuantity + "|" + stockName + "|" + tradeStatus + "|" + linearId;
     }
 }

@@ -15,10 +15,10 @@ import net.corda.core.transactions.SignedTransaction;
 import net.corda.core.utilities.OpaqueBytes;
 import net.corda.finance.contracts.asset.Cash;
 import net.corda.finance.flows.CashIssueAndPaymentFlow;
-import net.corda.samples.trading.flows.IssueStockFlow;
+import net.corda.samples.trading.flows.CreateAndIssueStock;
+import net.corda.samples.trading.flows.QueryTokens;
 import net.corda.samples.trading.flows.SettleTradeFlow;
 import net.corda.samples.trading.flows.TradeFlow;
-import net.corda.samples.trading.states.StockState;
 import net.corda.samples.trading.states.TradeState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,9 +27,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
@@ -43,7 +41,7 @@ import java.util.stream.Collectors;
 @CrossOrigin(origins = "*")
 public class Controller {
     private final CordaRPCOps proxy;
-    private final CordaX500Name myLegalName; // was "me"
+    private final CordaX500Name myLegalName;
     private final List<String> SERVICE_NAMES = ImmutableList.<String>of("Notary", "Controller");
     private final static Logger logger = LoggerFactory.getLogger(Controller.class);
 
@@ -77,7 +75,6 @@ public class Controller {
     public Map<String, List<CordaX500Name>> getNodes() {
 
         List<NodeInfo> nodes = proxy.networkMapSnapshot();
-        //System.out.println("Nodes :" + nodes);
         return ImmutableMap.of("nodes", nodes
                 .stream()
                 .map(node -> node.getLegalIdentities().get(0).getName())
@@ -93,7 +90,6 @@ public class Controller {
     public Map<String, List<CordaX500Name>> getPeers() {
 
         List<NodeInfo> nodes = proxy.networkMapSnapshot();
-        //System.out.println("Peers :" + nodes);
         return ImmutableMap.of("peers", nodes
                 .stream()
                 .map(node -> node.getLegalIdentities().get(0).getName())
@@ -125,6 +121,7 @@ public class Controller {
         int sellQuantity = convertedObject.get("sellQuantity").getAsInt();
         double buyValue = convertedObject.get("buyValue").getAsDouble();
         int buyQuantity = convertedObject.get("buyQuantity").getAsInt();
+        String stockToTrade = convertedObject.get("stockToTrade").getAsString();
 
         JsonObject resp = new JsonObject();
 
@@ -146,7 +143,7 @@ public class Controller {
                         proxy.wellKnownPartyFromX500Name(myLegalName),
                         null,
                         "Pending",
-                        new UniqueIdentifier());
+                        new UniqueIdentifier(), stockToTrade);
 
                 SignedTransaction signedTx = proxy.startTrackedFlowDynamic(TradeFlow.Initiator.class, tradeState).getReturnValue().get();
                 System.out.println("signedTx.getId() =  :" + signedTx.getId());
@@ -178,6 +175,7 @@ public class Controller {
         int buyQuantity = convertedObject.get("buyQuantity").getAsInt();
         String tradeStatus = convertedObject.get("tradeStatus").getAsString();
         String tradeID = convertedObject.get("tradeID").getAsString();
+        String stockToTrade = convertedObject.get("stockToTrade").getAsString();
 
         JsonObject resp = new JsonObject();
 
@@ -197,7 +195,7 @@ public class Controller {
                         buyQuantity,
                         this.proxy.wellKnownPartyFromX500Name(CordaX500Name.parse(initiatingParty)),
                         this.proxy.wellKnownPartyFromX500Name(CordaX500Name.parse(counterParty)),
-                        tradeStatus, linearId);
+                        tradeStatus, linearId, stockToTrade);
 
                 SignedTransaction signedTx = proxy.startTrackedFlowDynamic(SettleTradeFlow.class, counterTradeState).getReturnValue().get();
 
@@ -218,6 +216,7 @@ public class Controller {
         JsonObject convertedObject = new Gson().fromJson(payload, JsonObject.class);
 
         int amount = convertedObject.get("amount").getAsInt();
+        String name = convertedObject.get("name").getAsString();
         JsonObject resp = new JsonObject();
 
         if (amount <= 0) {
@@ -225,14 +224,16 @@ public class Controller {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
         } else {
             try {
-                StockState stockState = new StockState(proxy.wellKnownPartyFromX500Name(myLegalName),
-                        proxy.wellKnownPartyFromX500Name(myLegalName), amount);
-                proxy.startFlowDynamic(IssueStockFlow.class, stockState).getReturnValue().get();
+                String answer = proxy.startFlowDynamic(CreateAndIssueStock.class, name, amount).getReturnValue().get();
+                System.out.println(answer);
+
                 resp.addProperty("Response", "Success");
                 resp.addProperty("Amount", amount);
+                resp.addProperty("Name", name);
                 return ResponseEntity.status(HttpStatus.ACCEPTED).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
 
             } catch (Exception e) {
+                System.out.println("Exception : " + e.getMessage());
                 resp.addProperty("Exception :", e.getMessage());
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
             }
@@ -240,11 +241,20 @@ public class Controller {
     }
 
     @RequestMapping(value = "/getStockList", method = RequestMethod.GET)
-    public List<Integer> getAssetList() {
-        List<Integer> stockAmount = proxy.vaultQuery(StockState.class).getStates().stream()
-                .filter(x -> x.getState().getData().getOwner().equals(proxy.wellKnownPartyFromX500Name(myLegalName)))
-                .map(x -> x.getState().getData().getAmount()).collect(Collectors.toList());
-        return stockAmount;
+    public ResponseEntity<String> getStockList() {
+        JsonObject resp = new JsonObject();
+        try {
+            List<String> amountOfStocks = proxy.startFlowDynamic(QueryTokens.GetTokenBalance.class).getReturnValue().get();
+            System.out.println(amountOfStocks);
+            resp.addProperty("Response", "Success");
+            resp.addProperty("StockList", String.valueOf(amountOfStocks));
+            return ResponseEntity.status(HttpStatus.ACCEPTED).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
+
+        } catch (Exception e) {
+            System.out.println("Exception : " + e.getMessage());
+            resp.addProperty("Exception :", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
+        }
     }
 
     /**
