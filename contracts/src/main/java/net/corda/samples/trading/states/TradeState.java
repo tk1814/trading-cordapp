@@ -16,9 +16,9 @@ import java.util.*;
 @BelongsToContract(TradeContract.class)
 public class TradeState implements ContractState, LinearState {
 
-    public double sellValue; // sell value of the Trade
-    public int sellQuantity; // sell quantity for the Trade
-    public double buyValue; // buy value of the Trade
+    public double sellValue;
+    public int sellQuantity;
+    public double buyValue;
 
     public double getSellValue() {
         return sellValue;
@@ -32,12 +32,12 @@ public class TradeState implements ContractState, LinearState {
         return buyQuantity;
     }
 
-    public int buyQuantity; // buy quantity for the Trade
-    public Party initiatingParty; // the party initiating the Trade
+    public int buyQuantity;
+    public Party initiatingParty;
     @Nullable
-    public Party counterParty = null; // the Trade Counterparty
-    public String tradeStatus; // the Trade Status
-    private UniqueIdentifier linearId;// = new UniqueIdentifier(); // Unique ID for the Trade
+    public Party counterParty = null;
+    public String tradeStatus;
+    private UniqueIdentifier linearId;
     private String timestamp; // TODO
     public String stockName;
 

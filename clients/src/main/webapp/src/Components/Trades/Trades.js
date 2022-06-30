@@ -78,7 +78,7 @@
 //
 //     getBalance() {
 //         let PORT = localStorage.getItem('port');
-//         axios.get(URL + PORT + "/getCashBalance", {
+//         axios.get(URL + PORT + "/getMoneyBalance", {
 //             headers: {
 //                 'Access-Control-Allow-Origin': '*',
 //                 'Content-Type': 'application/json'
@@ -166,7 +166,6 @@
 //                 window.location.reload();
 //             })
 //
-//             // TODO: then counterparty calls to move money to initiating party
 //
 //         } else if (data.buyQuantity !== "0") {
 //             console.log("here", localStorage.getItem('port') )
@@ -182,7 +181,6 @@
 //                 window.location.reload();
 //             })
 //
-//             // TODO: then initiating party calls to move money to counter party
 //         }
 //
 //

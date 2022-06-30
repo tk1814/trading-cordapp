@@ -4,7 +4,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
-import net.corda.core.contracts.Amount;
 import net.corda.core.contracts.StateAndRef;
 import net.corda.core.contracts.TransactionVerificationException;
 import net.corda.core.contracts.UniqueIdentifier;
@@ -12,13 +11,7 @@ import net.corda.core.identity.CordaX500Name;
 import net.corda.core.messaging.CordaRPCOps;
 import net.corda.core.node.NodeInfo;
 import net.corda.core.transactions.SignedTransaction;
-import net.corda.core.utilities.OpaqueBytes;
-import net.corda.finance.contracts.asset.Cash;
-import net.corda.finance.flows.CashIssueAndPaymentFlow;
-import net.corda.samples.trading.flows.CreateAndIssueStock;
-import net.corda.samples.trading.flows.QueryTokens;
-import net.corda.samples.trading.flows.SettleTradeFlow;
-import net.corda.samples.trading.flows.TradeFlow;
+import net.corda.samples.trading.flows.*;
 import net.corda.samples.trading.states.TradeState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +20,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
@@ -212,7 +207,6 @@ public class Controller {
 
     @RequestMapping(value = "/issueStock", method = RequestMethod.POST)
     public ResponseEntity<String> issueStock(@RequestBody String payload) {
-        System.out.println(payload);
         JsonObject convertedObject = new Gson().fromJson(payload, JsonObject.class);
 
         int amount = convertedObject.get("amount").getAsInt();
@@ -234,7 +228,7 @@ public class Controller {
 
             } catch (Exception e) {
                 System.out.println("Exception : " + e.getMessage());
-                resp.addProperty("Exception :", e.getMessage());
+                resp.addProperty("Exception : ", e.getMessage());
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
             }
         }
@@ -245,14 +239,13 @@ public class Controller {
         JsonObject resp = new JsonObject();
         try {
             List<String> amountOfStocks = proxy.startFlowDynamic(QueryTokens.GetTokenBalance.class).getReturnValue().get();
-            System.out.println(amountOfStocks);
             resp.addProperty("Response", "Success");
             resp.addProperty("StockList", String.valueOf(amountOfStocks));
             return ResponseEntity.status(HttpStatus.ACCEPTED).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
 
         } catch (Exception e) {
             System.out.println("Exception : " + e.getMessage());
-            resp.addProperty("Exception :", e.getMessage());
+            resp.addProperty("Exception : ", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
         }
     }
@@ -260,25 +253,19 @@ public class Controller {
     /**
      * Initiates a flow that self-issues cash and then send this to a recipient.
      */
-    @RequestMapping(value = "/issueCash", method = RequestMethod.POST)
-    public ResponseEntity<String> issueCash(@RequestBody String payload) {
-        System.out.println(payload);
+    @RequestMapping(value = "/issueMoney", method = RequestMethod.POST)
+    public ResponseEntity<String> issueMoney(@RequestBody String payload) {
         JsonObject convertedObject = new Gson().fromJson(payload, JsonObject.class);
-
-        int amount = convertedObject.get("amount").getAsInt();
+        double amount = convertedObject.get("amount").getAsDouble();
 
         JsonObject resp = new JsonObject();
         try {
-            proxy.startFlowDynamic(CashIssueAndPaymentFlow.class,
-                            Amount.parseCurrency(amount + " GBP"),
-                            OpaqueBytes.of("PartyA".getBytes()),
-                            proxy.wellKnownPartyFromX500Name(myLegalName),
-                            false,
-                            proxy.notaryIdentities().get(0))
-                    .getReturnValue().get();
+            String result = proxy.startFlowDynamic(IssueMoney.class, "GBP", amount, proxy.wellKnownPartyFromX500Name(myLegalName)).getReturnValue().get();
+            System.out.println(result);
 
             resp.addProperty("Response", "Success");
             resp.addProperty("Amount", amount);
+            resp.addProperty("Result", result);
             return ResponseEntity.status(HttpStatus.ACCEPTED).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
 
         } catch (ExecutionException e) {
@@ -294,27 +281,18 @@ public class Controller {
         }
     }
 
-    @RequestMapping(value = "/getCashBalance", method = RequestMethod.GET)
-    public ResponseEntity<String> getCashBalance() {
+    @RequestMapping(value = "/getMoneyBalance", method = RequestMethod.GET)
+    public ResponseEntity<String> getMoneyBalance() {
         JsonObject resp = new JsonObject();
 
         try {
-            List<StateAndRef<Cash.State>> cashStateList = proxy.vaultQuery(Cash.State.class).getStates();
-            Long amount = 0L;
-            if (cashStateList.size() > 0) {
-                amount = cashStateList.stream().map(stateStateAndRef ->
-                        stateStateAndRef.getState().getData().getAmount().getQuantity()).reduce(Long::sum).get();
-                if (amount >= 100) {
-                    amount = amount / 100;
-                } else {
-                    amount = 0L;
-                }
-            }
-            resp.addProperty("Amount", amount);
+            String fiatBalance = proxy.startFlowDynamic(QueryTokens.GetFiatBalance.class, "GBP").getReturnValue().get();
+            resp.addProperty("Response", "Success");
+            resp.addProperty("Amount", fiatBalance);
             return ResponseEntity.status(HttpStatus.ACCEPTED).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
 
         } catch (Exception e) {
-            resp.addProperty("Exception :", e.getMessage());
+            resp.addProperty("Exception : ", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
         }
     }

@@ -26,9 +26,9 @@ public class SettleTradeFlow extends FlowLogic<SignedTransaction> {
     public SignedTransaction call() throws FlowException {
         // TODO: if a subflow fails then revert all
         if (counterTradeState.getSellQuantity() != 0) // called by seller/initiatingParty
-            subFlow(new MoveStock.Initiator(counterTradeState.getStockName(), counterTradeState.getSellQuantity(), counterTradeState.getCounterParty()));
+            subFlow(new DvPInitiatorFlow(counterTradeState.getStockName(), counterTradeState.getSellQuantity(), counterTradeState.getCounterParty(), counterTradeState.getSellQuantity()*counterTradeState.getSellValue()));
         else if (counterTradeState.getBuyQuantity() != 0) // called by seller/counterParty
-            subFlow(new MoveStock.Initiator(counterTradeState.getStockName(), counterTradeState.getBuyQuantity(), counterTradeState.getInitiatingParty()));
+            subFlow(new DvPInitiatorFlow(counterTradeState.getStockName(), counterTradeState.getBuyQuantity(), counterTradeState.getInitiatingParty(), counterTradeState.buyQuantity*counterTradeState.getBuyValue()));
         return subFlow(new CounterTradeFlow.CounterInitiator(counterTradeState));
 
     }

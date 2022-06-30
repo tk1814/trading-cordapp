@@ -89,7 +89,6 @@ public class CounterTradeFlow {
                 throw new RuntimeException("Trade state with trade ID: " + this.counterTradeState.getTradeId() + " was not found in the vault.");
             }
             StateAndRef<TradeState> inputTradeState = inputTradeStateList.get(0);
-            // System.out.println(inputTradeState);
 
             TradeContract.Commands.CounterTrade command = new TradeContract.Commands.CounterTrade();
             List<PublicKey> requiredSigns = ImmutableList.of(counterTradeState.getInitiatingParty().getOwningKey(), counterTradeState.getCounterParty().getOwningKey());

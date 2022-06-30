@@ -3,6 +3,7 @@ package net.corda.samples.trading.flows;
 import co.paralleluniverse.fibers.Suspendable;
 import com.r3.corda.lib.tokens.contracts.types.TokenPointer;
 import com.r3.corda.lib.tokens.contracts.types.TokenType;
+import com.r3.corda.lib.tokens.money.FiatCurrency;
 import com.r3.corda.lib.tokens.workflows.utilities.QueryUtilities;
 import net.corda.core.contracts.TransactionState;
 import net.corda.core.contracts.Amount;
@@ -42,7 +43,7 @@ public class QueryTokens {
                     .map(StateAndRef::getState)
                     .map(TransactionState::getData).collect(Collectors.toSet());
             if (evolvableTokenTypeSet.isEmpty()) {
-                throw new IllegalArgumentException("FungibleStockState not found in vault");
+                return new ArrayList<>();
             }
 
             // Save the result
@@ -65,5 +66,30 @@ public class QueryTokens {
             return stockAmountsAndNames;
         }
     }
+
+    @InitiatingFlow
+    @StartableByRPC
+    public static class GetFiatBalance extends FlowLogic<String> {
+        private final ProgressTracker progressTracker = new ProgressTracker();
+        private final String currencyCode;
+
+        public GetFiatBalance(String currencyCode) {
+            this.currencyCode = currencyCode;
+        }
+
+        @Override
+        public ProgressTracker getProgressTracker() {
+            return progressTracker;
+        }
+
+        @Override
+        @Suspendable
+        public String call() throws FlowException {
+            TokenType fiatTokenType = FiatCurrency.Companion.getInstance(currencyCode);
+            Amount<TokenType> amount = QueryUtilities.tokenBalance(getServiceHub().getVaultService(), fiatTokenType);
+            return amount.getQuantity() / 100.0 + " " + amount.getToken().getTokenIdentifier();
+        }
+    }
+
 
 }
