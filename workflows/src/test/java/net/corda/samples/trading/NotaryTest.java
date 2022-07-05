@@ -13,6 +13,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.concurrent.Future;
 
 public class NotaryTest {
@@ -24,16 +25,16 @@ public class NotaryTest {
 
     @Before
     public void setUp() {
+
         network = new MockNetwork(new MockNetworkParameters().withCordappsForAllNodes(ImmutableList.of(
                 TestCordapp.findCordapp("net.corda.samples.trading.contracts"),
-                TestCordapp.findCordapp("net.corda.samples.trading.flows"),
-                TestCordapp.findCordapp("net.corda.samples.trading.notaries")))
-                .withNotarySpecs(ImmutableList.of(new MockNetworkNotarySpec(
-                        new CordaX500Name("NotaryB", "London", "GB"),
-                        true,// Can also be validating if preferred.
-                        "net.corda.samples.trading.notaries.BFTNotary"
+                TestCordapp.findCordapp("net.corda.samples.trading.flows"))).withNotarySpecs(ImmutableList.of(new MockNetworkNotarySpec(
+                new CordaX500Name("Custom Notary", "Amsterdam", "NL"),
+                true,// Can also be validating if preferred.
+                "net.corda.samples.trading.notaries.BFTNotary"
 
-                ))));
+        ))));
+
         a = network.createPartyNode(null);
         b = network.createPartyNode(null);
         network.runNetwork();
@@ -49,6 +50,7 @@ public class NotaryTest {
         TradeFlow.Initiator flow1 = new TradeFlow.Initiator(
                 new TradeState(10,"GBP",1,"GBP",this.a.getInfo().getLegalIdentities().get(0),
                         this.b.getInfo().getLegalIdentities().get(0),"s",new UniqueIdentifier()));
+
 
         Future<SignedTransaction> future1 = a.startFlow(flow1);
         network.runNetwork();
