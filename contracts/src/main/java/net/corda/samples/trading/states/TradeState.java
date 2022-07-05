@@ -9,33 +9,37 @@ import net.corda.core.identity.AbstractParty;
 import net.corda.core.identity.Party;
 import net.corda.samples.trading.contracts.TradeContract;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
 @BelongsToContract(TradeContract.class)
 public class TradeState implements ContractState, LinearState {
 
-    public int sellValue; // sell value of the Trade
-    public String sellCurrency; // sell currency for the Trade
+    public Party initiatingParty;
+    @Nullable
+    public Party counterParty = null;
+    public String orderType;
+    public String tradeType;
+    public String stockName;
+    public double stockPrice;
+    public int stockQuantity;
+    public String expirationDate;
+    public String tradeStatus;
+    private UniqueIdentifier linearId;
+    // TODO: add timestamps
 
-    public int getBuyValue() {
-        return buyValue;
-    }
-
-    public int buyValue; // buy value of the Trade
-    public String buyCurrency; // buy currency for the Trade
-    public Party initiatingParty; // the party initiating the Trade
-    public Party counterParty; // the Trade Counterparty
-    public String tradeStatus; // the Trade Status
-    private UniqueIdentifier linearId = new UniqueIdentifier(); // Unique ID for the Trade
-
-    public TradeState(int sellValue, String sellCurrency, int buyValue, String buyCurrency, Party initiatingParty, Party counterParty, String tradeStatus, UniqueIdentifier linearId) {
-        this.sellValue = sellValue;
-        this.sellCurrency = sellCurrency;
-        this.buyValue = buyValue;
-        this.buyCurrency = buyCurrency;
+    public TradeState(Party initiatingParty, @Nullable Party counterParty, String orderType, String tradeType, String stockName, double stockPrice, int stockQuantity, String expirationDate, String tradeStatus, UniqueIdentifier linearId) {
         this.initiatingParty = initiatingParty;
-        this.counterParty = counterParty;
+        if (counterParty != null) {
+            this.counterParty = counterParty;
+        }
+        this.orderType = orderType;
+        this.tradeType = tradeType;
+        this.stockName = stockName;
+        this.stockPrice = stockPrice;
+        this.stockQuantity = stockQuantity;
+        this.expirationDate = expirationDate;
         this.tradeStatus = tradeStatus;
         this.linearId = linearId;
     }
@@ -44,8 +48,29 @@ public class TradeState implements ContractState, LinearState {
         return initiatingParty;
     }
 
+    @Nullable
     public Party getCounterParty() {
         return counterParty;
+    }
+
+    public String getOrderType() {
+        return orderType;
+    }
+
+    public String getTradeType() {
+        return tradeType;
+    }
+
+    public void setStockName(String stockName) {
+        this.stockName = stockName;
+    }
+
+    public double getStockPrice() {
+        return stockPrice;
+    }
+
+    public int getStockQuantity() {
+        return stockQuantity;
     }
 
     public String getTradeStatus() {
@@ -56,14 +81,41 @@ public class TradeState implements ContractState, LinearState {
         return linearId;
     }
 
+    public void setOrderType(String orderType) {
+        this.orderType = orderType;
+    }
+
+    public void setTradeType(String tradeType) {
+        this.tradeType = tradeType;
+    }
+
+    public void setStockPrice(double stockPrice) {
+        this.stockPrice = stockPrice;
+    }
+
+    public void setStockQuantity(int stockQuantity) {
+        this.stockQuantity = stockQuantity;
+    }
+
     public void setTradeId(UniqueIdentifier linearId) {
         this.linearId = linearId;
     }
 
+    public String getStockName() {
+        return stockName;
+    }
+
+    /*
+     * A participant is any party that should be notified
+     * when the state is created or consumed.
+     */
     @NotNull
     @Override
     public List<AbstractParty> getParticipants() {
-        return ImmutableList.of(initiatingParty, counterParty);
+        if (counterParty == null) {
+            return ImmutableList.of(initiatingParty);
+        } else
+            return ImmutableList.of(initiatingParty, counterParty);
     }
 
     @NotNull
@@ -74,7 +126,7 @@ public class TradeState implements ContractState, LinearState {
 
     @Override
     public String toString() {
-        return initiatingParty + "|" + counterParty + "|" + sellValue + " " + sellCurrency
-                + "|" + buyValue + " " + buyCurrency + "|" + tradeStatus + "|" + linearId;
+        return initiatingParty + "|" + counterParty + "|" + orderType + "|" + tradeType + "|" + stockQuantity
+                + "|" + stockName + "|" + stockPrice + "|" + expirationDate + "|" + tradeStatus + "|" + linearId;
     }
 }
