@@ -112,33 +112,29 @@ public class Controller {
 
         JsonObject convertedObject = new Gson().fromJson(payload, JsonObject.class);
 
-        double sellValue = convertedObject.get("sellValue").getAsDouble();
-        int sellQuantity = convertedObject.get("sellQuantity").getAsInt();
-        double buyValue = convertedObject.get("buyValue").getAsDouble();
-        int buyQuantity = convertedObject.get("buyQuantity").getAsInt();
-        String stockToTrade = convertedObject.get("stockToTrade").getAsString();
+        String orderType = convertedObject.get("orderType").getAsString();
+        String tradeType = convertedObject.get("tradeType").getAsString();
+        String stockName = convertedObject.get("stockName").getAsString();
+        double stockPrice = convertedObject.get("stockPrice").getAsDouble();
+        int stockQuantity = convertedObject.get("stockQuantity").getAsInt();
+        String expirationDate = convertedObject.get("expirationDate").getAsString();
 
         JsonObject resp = new JsonObject();
 
         // TODO: add checks: unable to sell more stocks than they own, and spending more than they have
         //  add checks in UI as well
-        if (sellValue < 0) {
-            resp.addProperty("Response", "Query parameter 'Sell Value' must be non-negative.\n");
+        if (stockPrice <= 0) {
+            resp.addProperty("Response", "Query parameter 'Stock Price' must be non-negative.\n");
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
         }
-        if (buyValue < 0) {
-            resp.addProperty("Response", "Query parameter 'Buy Value' must be non-negative.\n");
+        if (stockQuantity <= 0) {
+            resp.addProperty("Response", "Query parameter 'Stock Quantity' must be non-negative.\n");
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
         } else {
             try {
-                TradeState tradeState = new TradeState(sellValue,
-                        sellQuantity,
-                        buyValue,
-                        buyQuantity,
-                        proxy.wellKnownPartyFromX500Name(myLegalName),
-                        null,
-                        "Pending",
-                        new UniqueIdentifier(), stockToTrade);
+                TradeState tradeState = new TradeState(proxy.wellKnownPartyFromX500Name(myLegalName), null,
+                        orderType, tradeType, stockName, stockPrice, stockQuantity, expirationDate, "Pending",
+                        new UniqueIdentifier());
 
                 SignedTransaction signedTx = proxy.startTrackedFlowDynamic(TradeFlow.Initiator.class, tradeState).getReturnValue().get();
                 System.out.println("signedTx.getId() =  :" + signedTx.getId());
@@ -164,13 +160,14 @@ public class Controller {
 
         String initiatingParty = convertedObject.get("initiatingParty").getAsString();
         String counterParty = convertedObject.get("counterParty").getAsString();
-        double sellValue = convertedObject.get("sellValue").getAsDouble();
-        int sellQuantity = convertedObject.get("sellQuantity").getAsInt();
-        double buyValue = convertedObject.get("buyValue").getAsDouble();
-        int buyQuantity = convertedObject.get("buyQuantity").getAsInt();
+        String orderType = convertedObject.get("orderType").getAsString();
+        String tradeType = convertedObject.get("tradeType").getAsString();
+        String stockName = convertedObject.get("stockName").getAsString();
+        double stockPrice = convertedObject.get("stockPrice").getAsDouble();
+        int stockQuantity = convertedObject.get("stockQuantity").getAsInt();
+        String expirationDate = convertedObject.get("expirationDate").getAsString();
         String tradeStatus = convertedObject.get("tradeStatus").getAsString();
         String tradeID = convertedObject.get("tradeID").getAsString();
-        String stockToTrade = convertedObject.get("stockToTrade").getAsString();
 
         JsonObject resp = new JsonObject();
 
@@ -183,14 +180,9 @@ public class Controller {
         } else {
             try {
                 UniqueIdentifier linearId = new UniqueIdentifier(null, UUID.fromString(tradeID));
-                TradeState counterTradeState = new TradeState(
-                        sellValue,
-                        sellQuantity,
-                        buyValue,
-                        buyQuantity,
-                        this.proxy.wellKnownPartyFromX500Name(CordaX500Name.parse(initiatingParty)),
-                        this.proxy.wellKnownPartyFromX500Name(CordaX500Name.parse(counterParty)),
-                        tradeStatus, linearId, stockToTrade);
+                TradeState counterTradeState = new TradeState(this.proxy.wellKnownPartyFromX500Name(CordaX500Name.parse(initiatingParty)),
+                        this.proxy.wellKnownPartyFromX500Name(CordaX500Name.parse(counterParty)), orderType,
+                        tradeType, stockName, stockPrice, stockQuantity, expirationDate, tradeStatus, linearId);
 
                 SignedTransaction signedTx = proxy.startTrackedFlowDynamic(SettleTradeFlow.class, counterTradeState).getReturnValue().get();
 

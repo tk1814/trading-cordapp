@@ -26,8 +26,9 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import TableCell from "@mui/material/TableCell";
 import TableBody from "@mui/material/TableBody";
+import moment from "moment";
 
-const drawerWidth = 290;
+const drawerWidth = 300;
 const headers = {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'};
 
 const useStyles = (theme) => ({
@@ -54,24 +55,31 @@ class CreateTrade extends Component {
     constructor(props) {
         super(props);
         this.state = {
+            orderType: "pendingOrder",
             value: "1",
             trades: [],
             nodes: [],
             peers: [],
             counterParty: "null",
-            sellBuyValue: 0,
-            sellBuyQuantity: 0,
-            cashAmount: 1,
+            stockPrice: 0,
+            stockQuantity: 0,
             stockAmount: 1,
+            moneyAmount: 1,
             stockName: null,
             response: null,
             balance: 0,
             stockBalanceList: [],
             stockNames: [],
             stockToTrade: null,
-            alignment: "sell"
+            alignment: "sell",
+            bidPrice: "--",
+            askPrice: "--",
+            intervalId: null,
+            expirationDate: moment(new Date()).add(10, 'm').toDate().toISOString().slice(0, 16),
+            stockCodes: ["AAPL", "AMZN", "TSLA", "NFLX", "META", "GOOG", "TWTR"]
         }
     }
+
 
     stockAmountChange = (e) => {
         this.setState({stockAmount: e.target.value});
@@ -79,17 +87,17 @@ class CreateTrade extends Component {
     stockNameChange = (e) => {
         this.setState({stockName: e.target.value});
     }
-    cashAmountChange = (e) => {
-        this.setState({cashAmount: e.target.value});
+    moneyAmountChange = (e) => {
+        this.setState({moneyAmount: e.target.value});
     }
-    sellBuyValueChange = (e) => {
-        this.setState({sellBuyValue: e.target.value});
+    stockPriceChange = (e) => {
+        this.setState({stockPrice: e.target.value});
     }
-    stockToTradeChange = (e) => {
-        this.setState({stockToTrade: e.target.value});
+    expirationDateChange = (e) => {
+        this.setState({expirationDate: e.target.value});
     }
-    sellBuyQuantityChange = (e) => {
-        this.setState({sellBuyQuantity: e.target.value});
+    stockQuantityChange = (e) => {
+        this.setState({stockQuantity: e.target.value});
     }
     toggleHandleChange = (e, alignment) => {
         this.setState({alignment})
@@ -137,10 +145,7 @@ class CreateTrade extends Component {
     }
 
     issueMoney = (e) => {
-        const data = {
-            amount: parseFloat(this.state.cashAmount).toFixed(2)
-        }
-
+        const data = {amount: parseFloat(this.state.moneyAmount).toFixed(2)}
         let PORT = localStorage.getItem('port');
         axios.post(URL + PORT + '/issueMoney', data, {
             headers: headers
@@ -156,7 +161,6 @@ class CreateTrade extends Component {
         }).catch(e => {
             console.log(e);
         });
-
     }
 
     getStockQuantity() {
@@ -235,7 +239,8 @@ class CreateTrade extends Component {
             trades.forEach(function (item, index) {
                 trades[index] = item.split("|");
             });
-            this.setState({trades});
+            let invertedTrades = trades.reverse();
+            this.setState({trades: invertedTrades});
         }).catch(e => {
             console.log(e);
         });
@@ -246,51 +251,6 @@ class CreateTrade extends Component {
             return 'PartyA'
         } else if (localStorage.getItem('port') === '10057') {
             return 'PartyB'
-        }
-    }
-
-    counterTradeButton = (index, initiatingParty) => {
-        let partyTrades = this.state.trades;
-
-        const data = {
-            initiatingParty: initiatingParty,
-            counterParty: this.state.counterParty,
-            sellValue: partyTrades[index][2],
-            sellQuantity: partyTrades[index][3],
-            buyValue: partyTrades[index][4],
-            buyQuantity: partyTrades[index][5],
-            stockToTrade: partyTrades[index][6],
-            tradeStatus: "Accepted",
-            tradeID: partyTrades[index][8],
-        }
-
-        if (data.sellQuantity !== "0") {
-
-            // find port of initiating party
-            let PORT;
-            if (data.initiatingParty.includes("PartyA")) {
-                PORT = "10056";
-            } else if (data.initiatingParty.includes("PartyB")) {
-                PORT = "10057";
-            }
-
-            // initiating party calls to move stocks from initiating party to counterparty
-            axios.post(URL + PORT + '/counterTrade', data, {
-                headers: headers
-            }).then(res => {
-                console.log(res.data.Response);
-                window.location.reload();
-            })
-        } else if (data.buyQuantity !== "0") {
-
-            // counterparty calls to move stocks from counterparty to initiating party
-            let PORT = localStorage.getItem('port');
-            axios.post(URL + PORT + '/counterTrade', data, {
-                headers: headers
-            }).then(res => {
-                console.log(res.data.Response);
-                window.location.reload();
-            })
         }
     }
 
@@ -307,33 +267,44 @@ class CreateTrade extends Component {
         window.location.reload();
     }
 
-
-    buttonHandler = (e) => {
+    createPendingOrder = (e) => {
         e.preventDefault();
 
-        if (this.state.sellBuyValue === 0 && this.state.sellBuyQuantity === 0) {
-            window.alert("Cannot create trade with 0 values.")
-        } else {
+        let current = new Date().toISOString().slice(0, 16)
+        let selected = this.state.expirationDate;
+        let currentDateTime = new Date(current);
+        let selectedDateTime = new Date(selected);
+        let currentDate = current.slice(0, 10)
 
-            let data = {};
+        // don't allow previous dates
+        // if today's date is chosen: don't allow previous times
+        if (this.state.stockPrice === 0 && this.state.stockQuantity === 0) {
+            window.alert("Cannot create trade with 0 values.")
+        } else if (this.state.expirationDate === null) {
+            window.alert("Null expiration date.")
+        } else if (selectedDateTime.getDate() < currentDateTime.getDate()) {
+            window.alert("Invalid expiration day.")
+        } else if (selectedDateTime.getMonth() < currentDateTime.getMonth()) {
+            window.alert("Invalid expiration month.")
+        } else if (selectedDateTime.getFullYear() < currentDateTime.getFullYear()) {
+            window.alert("Invalid expiration year.")
+        } else if (currentDate === this.state.expirationDate.slice(0, 10) && selectedDateTime.getTime() < currentDateTime.getTime()) {
+            window.alert("Invalid expiration time.")
+        } else {
+            let tradeType;
             if (this.state.alignment === "sell") {
-                data = {
-                    counterParty: this.state.counterParty,
-                    sellValue: parseFloat(this.state.sellBuyValue).toFixed(2),
-                    sellQuantity: this.state.sellBuyQuantity,
-                    buyValue: 0.0,
-                    buyQuantity: 0,
-                    stockToTrade: this.state.stockToTrade
-                }
+                tradeType = "Sell";
             } else if (this.state.alignment === "buy") {
-                data = {
-                    counterParty: this.state.counterParty,
-                    sellValue: 0.0,
-                    sellQuantity: 0,
-                    buyValue: parseFloat(this.state.sellBuyValue).toFixed(2),
-                    buyQuantity: this.state.sellBuyQuantity,
-                    stockToTrade: this.state.stockToTrade
-                }
+                tradeType = "Buy";
+            }
+            let data = {
+                counterParty: this.state.counterParty,
+                orderType: "Pending Order",
+                tradeType: tradeType,
+                stockName: this.state.stockToTrade,
+                stockPrice: parseFloat(this.state.stockPrice).toFixed(2),
+                stockQuantity: this.state.stockQuantity,
+                expirationDate: this.state.expirationDate
             }
             console.log(data);
 
@@ -341,7 +312,6 @@ class CreateTrade extends Component {
             axios.post(URL + PORT + '/createTrade', data, {
                 headers: headers
             }).then(res => {
-
                 const response = res.data.Response;
                 if (response !== null) {
                     console.log(response);
@@ -354,8 +324,172 @@ class CreateTrade extends Component {
                 console.log(e);
             });
         }
-
     };
+
+    orderTypeChange = (e) => {
+        let orderType = e.target.value;
+        this.setState({orderType});
+        // clear previous gets
+        if (this.state.intervalId !== null) {
+            clearInterval(this.state.intervalId);
+            this.setState({intervalId: null});
+        }
+        this.setState({bidPrice: "--"});
+        this.setState({askPrice: "--"});
+
+        // get real time stock prices every 10 seconds
+        if (orderType === "marketOrder" && this.state.stockToTrade !== null) {
+            this.getStockToTradePrice(this.state.stockToTrade);
+            let intervalId = setInterval(() => {
+                this.getStockToTradePrice(this.state.stockToTrade);
+            }, 10000);
+            this.setState({intervalId})
+        }
+    }
+    stockToTradeChange = (e) => {
+        let stockToTrade = e.target.value;
+        this.setState({stockToTrade});
+        // clear previous gets
+        if (this.state.intervalId !== null) {
+            clearInterval(this.state.intervalId);
+            this.setState({intervalId: null});
+        }
+        this.setState({bidPrice: "--"});
+        this.setState({askPrice: "--"});
+
+        if (this.state.orderType === "marketOrder" && stockToTrade !== null) {
+            this.getStockToTradePrice(stockToTrade);
+            // get real time stock prices every 10 seconds
+            let intervalId = setInterval(() => {
+                this.getStockToTradePrice(stockToTrade);
+            }, 10000);
+            this.setState({intervalId})
+        }
+    }
+
+    getStockToTradePrice = (stockToTrade) => {
+        let options = {
+            method: 'GET',
+            url: 'https://yfapi.net/v6/finance/quote',
+            params: {region: 'GB', lang: 'en', symbols: stockToTrade},
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': 'oxVJNIkhxP2Z4hVB1YE9W91crYWCLvzX5fM6TElC'
+            }
+        };
+
+        // TODO: uncomment to fetch real-time stock quote & update API key
+        axios.request(options).then(response => {
+            if (response !== null) {
+                let bidPrice = response.data.quoteResponse.result[0].bid;
+                let askPrice = response.data.quoteResponse.result[0].ask;
+                console.log(bidPrice, askPrice);
+                if (bidPrice !== 0 && askPrice !== 0) {
+                    console.log(bidPrice, askPrice);
+                    this.setState({bidPrice});
+                    this.setState({askPrice});
+                } else {
+                    window.alert("Cannot get stock quote. Market is not open.");
+                    if (this.state.intervalId !== null) {
+                        clearInterval(this.state.intervalId);
+                        this.setState({intervalId: null});
+                    }
+                }
+            }
+        }).catch(e => {
+            console.log(e);
+        });
+    }
+
+    createMarketOrder(e, marketOrderType) {
+        e.preventDefault();
+        console.log(marketOrderType)
+
+        if (this.state.stockQuantity === 0) {
+            window.alert("Cannot create trade with 0 values.")
+        } else {
+            let tradeType, stockPrice;
+            if (marketOrderType === "sellByMarket") {
+                tradeType = "Sell";
+                stockPrice = this.state.askPrice
+            } else if (marketOrderType === "buyByMarket") {
+                tradeType = "Buy";
+                stockPrice = this.state.bidPrice
+            }
+            let data = {
+                counterParty: this.state.counterParty,
+                orderType: "Market Order",
+                tradeType: tradeType,
+                stockName: this.state.stockToTrade,
+                stockPrice: stockPrice,
+                stockQuantity: this.state.stockQuantity,
+                expirationDate: moment(new Date()).add(3, 'm').toDate().toISOString().slice(0, 16) // sets 3 mins expiration date
+            }
+            console.log(data);
+
+            let PORT = localStorage.getItem('port');
+            axios.post(URL + PORT + '/createTrade', data, {
+                headers: headers
+            }).then(res => {
+                const response = res.data.Response;
+                if (response !== null) {
+                    console.log(response);
+                    this.setState({response});
+                    if (response.includes("committed to ledger")) {
+                        window.location.reload();
+                    }
+                }
+            }).catch(e => {
+                console.log(e);
+            });
+        }
+    }
+
+    counterTradeButton = (index, initiatingParty) => {
+        let partyTrades = this.state.trades;
+
+        const data = {
+            initiatingParty: initiatingParty,
+            counterParty: this.state.counterParty,
+            orderType: partyTrades[index][2],
+            tradeType: partyTrades[index][3],
+            stockQuantity: partyTrades[index][4],
+            stockName: partyTrades[index][5],
+            stockPrice: partyTrades[index][6],
+            expirationDate: partyTrades[index][7],
+            tradeStatus: "Accepted",
+            tradeID: partyTrades[index][9],
+        }
+        console.log(data)
+
+        if (data.tradeType === "Sell") {
+            // find port of initiating party
+            let PORT;
+            if (data.initiatingParty.includes("PartyA")) {
+                PORT = "10056";
+            } else if (data.initiatingParty.includes("PartyB")) {
+                PORT = "10057";
+            }
+            // initiating party calls to move stocks from initiating party to counterparty
+            axios.post(URL + PORT + '/counterTrade', data, {
+                headers: headers
+            }).then(res => {
+                console.log(res.data.Response);
+                window.location.reload();
+            })
+        } else if (data.tradeType === "Buy") {
+
+            // counterparty calls to move stocks from counterparty to initiating party
+            let PORT = localStorage.getItem('port');
+            axios.post(URL + PORT + '/counterTrade', data, {
+                headers: headers
+            }).then(res => {
+                console.log(res.data.Response);
+                window.location.reload();
+            })
+        }
+    }
+
 
     render() {
         const {classes} = this.props;
@@ -367,9 +501,11 @@ class CreateTrade extends Component {
 
                         <Box sx={{display: 'flex'}}>
                             <CssBaseline/>
-                            <AppBar position="fixed"
-                                    sx={{width: `calc(100% - ${drawerWidth}px)`, ml: `${drawerWidth}px`}}> </AppBar>
-                            <Drawer style={{fontSize: 15}} sx={{
+                            <AppBar position="fixed" sx={{
+                                width: `calc(100% - ${drawerWidth}px)`,
+                                ml: `${drawerWidth}px`
+                            }}> </AppBar>
+                            <Drawer sx={{
                                 width: drawerWidth, flexShrink: 0, '& .MuiDrawer-paper': {
                                     width: drawerWidth, boxSizing: 'border-box',
                                 },
@@ -389,124 +525,212 @@ class CreateTrade extends Component {
                                             labelId="demo-simple-select-label"
                                             id="demo-simple-select"
                                             label="Party"
-                                            onChange={this.initiatingPartyChange}>
+                                            onChange={this.initiatingPartyChange} fullWidth>
                                             {this.state.nodes.map((node, key) => (
-                                                <MenuItem
-                                                    key={key}
-                                                    value={node}>{node}
-                                                </MenuItem>))}
+                                                <MenuItem key={key} value={node}>{node}</MenuItem>))}
                                         </Select>
                                     </Grid>
                                 </FormControl>
                                 <br/>
                                 <Divider/>
 
-                                <form className={classes.form} style={{marginLeft: "20px", fontSize: 15}}
-                                      id="createTradeForm" noValidate>
-                                    <p style={{fontSize: 17, marginTop: "-5px"}}>Create a trade</p>
+                                {/* ------------------ ORDERS ------------------------*/}
+                                <Grid container spacing={2}>
+                                    <Grid item xs={10} style={{marginLeft: "20px"}}>
+                                        <FormControl required fullWidth>
+                                            <InputLabel id="demo-simple-select-label">Stock</InputLabel>
+                                            <Select
+                                                // value={}
+                                                defaultValue={''}
+                                                labelId="demo-simple-select-label"
+                                                id="demo-simple-select"
+                                                label="stockToTrade"
+                                                onChange={this.stockToTradeChange}>
+                                                {this.state.stockNames.map((stock, key) => (
+                                                    <MenuItem key={key} value={stock}>{stock} </MenuItem>))}
+                                            </Select>
+                                        </FormControl>
+                                    </Grid>
 
-                                    <ToggleButtonGroup
-                                        color="primary"
-                                        value={this.state.alignment}
-                                        exclusive
-                                        onChange={this.toggleHandleChange}>
-                                        <ToggleButton value="sell" style={{fontSize: 13}}>Sell</ToggleButton>
-                                        <ToggleButton value="buy" style={{fontSize: 13}}>Buy</ToggleButton>
+                                    <Grid item xs={10} style={{marginLeft: "20px"}}>
+                                        <FormControl required fullWidth>
+                                            <Select
+                                                value={this.state.orderType}
+                                                defaultValue={"pendingOrder"}
+                                                labelId="demo-simple-select-label"
+                                                id="demo-simple-select"
+                                                label="orderType"
+                                                onChange={this.orderTypeChange} fullWidth>
+                                                <MenuItem value="pendingOrder">Pending Order</MenuItem>
+                                                <MenuItem value="marketOrder">Market Execution</MenuItem>
+                                            </Select>
+                                        </FormControl>
+                                    </Grid>
+                                </Grid>
+
+
+                                {/* --------- Pending Order -------------- */}
+                                {(this.state.orderType === "pendingOrder") &&
+
+                                <form className={classes.form} style={{marginLeft: "20px"}} id="createTradeForm" noValidate>
+
+                                    <ToggleButtonGroup size="small" color="primary" value={this.state.alignment} exclusive onChange={this.toggleHandleChange}>
+                                        <ToggleButton value="sell">Sell</ToggleButton>
+                                        <ToggleButton value="buy">Buy </ToggleButton>
                                     </ToggleButtonGroup>
-                                    <br/>
+                                    <br/><br/>
 
                                     <Grid container>
                                         <Grid item xs={10}>
-                                            <FormControl required fullWidth>
-                                                <InputLabel id="demo-simple-select-label" style={{fontSize: 15}}>Stock
-                                                    Name</InputLabel>
-                                                <Select
-                                                    // value={}
-                                                    defaultValue={''}
-                                                    labelId="demo-simple-select-label"
-                                                    id="demo-simple-select"
-                                                    label="stockToTrade"
-                                                    onChange={this.stockToTradeChange}>
-                                                    {this.state.stockNames.map((stock, key) => (
-                                                        <MenuItem style={{fontSize: 15}} key={key}
-                                                                  value={stock}>{stock} </MenuItem>))}
-                                                </Select>
-                                            </FormControl>
+                                            <TextField
+                                                size="small"
+                                                variant="outlined"
+                                                required
+                                                fullWidth
+                                                id="stockQuantity"
+                                                label="Stock Volume"
+                                                name="stockQuantity"
+                                                autoComplete="stockQuantity"
+                                                placeholder=""
+                                                onChange={this.stockQuantityChange}
+                                                error={this.stockQuantity === ""}
+                                                helperText={this.stockQuantity === "" ? 'Empty field!' : ' '}/>
+                                        </Grid>
+                                        <Grid item xs={10}>
+                                            <TextField
+                                                size="small"
+                                                autoComplete="fname"
+                                                name="stockPrice"
+                                                variant="outlined"
+                                                required
+                                                fullWidth
+                                                id="stockPrice"
+                                                label="Stock Price (GBP)"
+                                                InputProps={{style: {marginTop: "-10px"}}}
+                                                InputLabelProps={{style: {marginTop: "-10px"}}}
+                                                placeholder=""
+                                                onChange={this.stockPriceChange}
+                                                error={this.state.stockPrice === ""}
+                                                helperText={this.state.stockPrice === "" ? 'Empty field!' : ' '}/>
+                                        </Grid>
+
+                                        <Grid item xs={10}>
+                                            <TextField
+                                                fullWidth
+                                                defaultValue={moment(new Date()).add(10, 'm').toDate().toISOString().slice(0, 16)}
+                                                id="expirationDate"
+                                                label="Expiration Date"
+                                                inputProps={{
+                                                    min: new Date().toISOString().slice(0, 16),
+                                                    style: {}
+                                                }}
+                                                InputLabelProps={{shrink: true, style: {}}}
+                                                type="datetime-local"
+                                                onChange={this.expirationDateChange}/>
                                         </Grid>
                                         <br/><br/><br/>
+
+                                        <Grid item xs={10}>
+                                            <Button
+                                                size="small"
+                                                type="submit"
+                                                fullWidth
+                                                variant="contained"
+                                                color="primary"
+                                                onClick={this.createPendingOrder}>
+                                                Place Order
+                                            </Button>
+                                        </Grid>
+                                    </Grid>
+                                </form>}
+
+
+                                {/* --------- Market Order -------------- */}
+                                {(this.state.orderType === "marketOrder") &&
+                                <form className={classes.form} style={{marginLeft: "20px"}}
+                                      id="createMarketForm" noValidate>
+
+                                    <Grid container size="small">
                                         <Grid item xs={10}>
                                             <TextField
-                                                autoComplete="fname"
-                                                name="sellBuyValue"
+                                                size="small"
                                                 variant="outlined"
                                                 required
                                                 fullWidth
-                                                id="sellBuyValue"
-                                                label="Stock Value (GBP)"
-                                                InputProps={{style: {fontSize: 15}}}
-                                                InputLabelProps={{style: {fontSize: 15}}}
+                                                id="stockQuantity"
+                                                label="Stock Volume"
+                                                name="stockQuantity"
+                                                autoComplete="stockQuantity"
+                                                InputProps={{style: {}}}
+                                                InputLabelProps={{style: {}}}
                                                 placeholder=""
-                                                onChange={this.sellBuyValueChange}
-                                                error={this.state.sellBuyValue === ""}
-                                                helperText={this.state.sellBuyValue === "" ? 'Empty field!' : ' '}/>
+                                                onChange={this.stockQuantityChange}
+                                                error={this.stockQuantity === ""}
+                                                helperText={this.stockQuantity === "" ? 'Empty field!' : ' '}/>
                                         </Grid>
                                         <Grid item xs={10}>
-                                            <TextField
-                                                variant="outlined"
-                                                required
-                                                fullWidth
-                                                id="sellBuyQuantity"
-                                                label="Stock Quantity"
-                                                name="sellBuyQuantity"
-                                                autoComplete="sellBuyQuantity"
-                                                InputProps={{style: {fontSize: 15}}}
-                                                InputLabelProps={{style: {fontSize: 15}}}
-                                                placeholder=""
-                                                onChange={this.sellBuyQuantityChange}
-                                                error={this.sellBuyQuantity === ""}
-                                                helperText={this.sellBuyQuantity === "" ? 'Empty field!' : ' '}/>
+                                            <p style={{
+                                                marginLeft: "-20px", marginTop: "-10px",
+                                                fontSize: 17, display: "flex",
+                                                justifyContent: "center"
+                                            }}>{this.state.askPrice} / {this.state.bidPrice} </p>
                                         </Grid>
-                                        <Grid item xs={10}>
-                                            <Button style={{fontSize: 13}}
+                                        <Grid container spacing={2}>
+                                            <Grid item xs={10}>
+                                                <Button
+                                                    size="small"
                                                     type="submit"
                                                     fullWidth
                                                     variant="contained"
                                                     color="primary"
-                                                    onClick={this.buttonHandler}>
-                                                Create Trade
-                                            </Button>
+                                                    onClick={(e) => this.createMarketOrder(e, "sellByMarket")}>
+                                                    Sell by Market
+                                                </Button>
+                                            </Grid>
+                                            <Grid item xs={10}>
+                                                <Button
+                                                    size="small"
+                                                    type="submit"
+                                                    fullWidth
+                                                    variant="contained"
+                                                    color="primary"
+                                                    onClick={(e) => this.createMarketOrder(e, "buyByMarket")}>
+                                                    Buy By Market
+                                                </Button>
+                                            </Grid>
                                         </Grid>
                                     </Grid>
-                                </form>
+                                </form>}
 
                                 <br/>
                                 <Divider/>
 
-                                <form className={classes.form} style={{marginLeft: "20px"}} id="issueMoneyForm"
-                                      noValidate>
+                                <form className={classes.form} style={{marginLeft: "20px"}} id="issueMoneyForm" noValidate>
                                     <Grid item xs={10}>
                                         <TextField
-                                            name="cashAmount"
+                                            required
+                                            size="small"
+                                            name="moneyAmount"
                                             variant="outlined"
                                             fullWidth
-                                            id="cashAmount"
+                                            id="moneyAmount"
                                             label="Amount (GBP)"
-                                            InputProps={{style: {fontSize: 15}}}
-                                            InputLabelProps={{style: {fontSize: 15}}}
+                                            InputProps={{style: {}}}
+                                            InputLabelProps={{style: {}}}
                                             placeholder=""
-                                            onChange={this.cashAmountChange}
-                                            error={this.state.cashAmount === ""}
-                                            helperText={this.state.cashAmount === "" ? 'Empty field!' : ' '}
-
-                                        />
+                                            onChange={this.moneyAmountChange}
+                                            error={this.state.moneyAmount === ""}
+                                            helperText={this.state.moneyAmount === "" ? 'Empty field!' : ' '}/>
                                     </Grid>
                                     <Grid item xs={10}>
-                                        <Button style={{fontSize: 13}}
-                                                fullWidth
-                                                type="submit"
-                                                variant="contained"
-                                                color="primary"
-                                                onClick={this.issueMoney}>
+                                        <Button
+                                            style={{marginTop: "-10px"}}
+                                            size="small"
+                                            fullWidth
+                                            type="submit"
+                                            variant="contained"
+                                            color="primary"
+                                            onClick={this.issueMoney}>
                                             Issue Money
                                         </Button>
                                     </Grid>
@@ -515,50 +739,55 @@ class CreateTrade extends Component {
                                 <br/>
                                 <Divider/>
 
-                                <form className={classes.form} style={{marginLeft: "20px"}} id="issueStockForm"
-                                      noValidate>
+                                <form className={classes.form} style={{
+                                    marginLeft: "20px",
+                                    marginTop: "0px"
+                                }} id="issueStockForm" noValidate>
 
-                                    <Grid container>
+                                    <Grid container spacing={2}>
+
                                         <Grid item xs={10}>
-                                            <TextField
-                                                required
-                                                name="stockName"
-                                                variant="outlined"
-                                                fullWidth
-                                                id="stockName"
-                                                label="Stock Name"
-                                                InputProps={{style: {fontSize: 15}}}
-                                                InputLabelProps={{style: {fontSize: 15}}}
-                                                placeholder=""
-                                                onChange={this.stockNameChange}
-                                                error={this.state.stockName === ""}
-                                                helperText={this.state.stockName === "" ? 'Empty field!' : ' '}
-                                            />
+                                            <FormControl required fullWidth>
+                                                <InputLabel id="demo-simple-select-label">Stock</InputLabel>
+                                                <Select
+                                                    // value={}
+                                                    defaultValue={''}
+                                                    labelId="demo-simple-select-label"
+                                                    id="demo-simple-select"
+                                                    label="Stock Name"
+                                                    onChange={this.stockNameChange}>
+                                                    {this.state.stockCodes.map((stock, key) => (
+                                                        <MenuItem key={key} value={stock}>{stock} </MenuItem>))}
+                                                </Select>
+                                            </FormControl>
                                         </Grid>
                                         <Grid item xs={10}>
                                             <TextField
+                                                size="small"
                                                 required
                                                 name="stockAmount"
                                                 variant="outlined"
                                                 fullWidth
                                                 id="stockAmount"
                                                 label="Stock Amount"
-                                                placeholder=""
                                                 onChange={this.stockAmountChange}
                                                 error={this.state.stockAmount === ""}
                                                 helperText={this.state.stockAmount === "" ? 'Empty field!' : ' '}
                                             />
                                         </Grid>
                                         <Grid item xs={10}>
-                                            <Button style={{fontSize: 13}}
-                                                    fullWidth
-                                                    type="submit"
-                                                    variant="contained"
-                                                    color="primary"
-                                                    onClick={this.issueStock}>
+                                            <Button
+                                                style={{marginTop: "-40px"}}
+                                                size="small"
+                                                fullWidth
+                                                type="submit"
+                                                variant="contained"
+                                                color="primary"
+                                                onClick={this.issueStock}>
                                                 Issue Stocks
                                             </Button>
-                                        </Grid></Grid>
+                                        </Grid>
+                                    </Grid>
                                 </form>
                                 <br/>
                             </Drawer>
@@ -572,36 +801,13 @@ class CreateTrade extends Component {
                             <CssBaseline/>
                             <AppBar position="fixed"
                                     sx={{width: `calc(100% - ${drawerWidth}px)`, ml: `${drawerWidth}px`}}> </AppBar>
-                            <Drawer style={{fontSize: 15}} sx={{
+                            <Drawer sx={{
                                 width: drawerWidth, flexShrink: 0, '& .MuiDrawer-paper': {
                                     width: drawerWidth, boxSizing: 'border-box',
                                 },
                             }} variant="permanent" anchor="right">
                                 <Toolbar/>
-                                {/*<Container component="main" maxWidth="sm">*/}
-                                {/*    <TableContainer className={classes.table} component={Paper}>*/}
-                                {/*        <Table sx={{minWidth: 250}} aria-label="simple table">*/}
-                                {/*            <TableHead>*/}
-                                {/*                <TableRow>*/}
-                                {/*                    <TableCell align="center" style={{*/}
-                                {/*                        fontWeight: 'bold',*/}
-                                {/*                        fontSize: 20*/}
-                                {/*                    }}>Stocks</TableCell>*/}
-                                {/*                </TableRow>*/}
-                                {/*            </TableHead>*/}
-                                {/*            <TableBody>*/}
-                                {/*                {this.state.stockBalanceList.map((row, index) => (*/}
-                                {/*                    <TableRow key={index}*/}
-                                {/*                              sx={{'&:last-child td, &:last-child th': {border: 0}}}>*/}
-                                {/*                        <TableCell align="center" key={index} component="th"*/}
-                                {/*                                   scope="row">{row}</TableCell>*/}
-                                {/*                    </TableRow>*/}
-                                {/*                ))}*/}
-                                {/*            </TableBody>*/}
-                                {/*        </Table>*/}
-                                {/*    </TableContainer>*/}
-                                {/*</Container>*/}
-
+                                <br/>
                                 <Divider/>
                                 <p style={{marginLeft: "20px", fontSize: 17, fontWeight: 'bold'}}>Balance:</p>
                                 <p style={{marginLeft: "20px", fontSize: 17, marginTop: "-10px"}}>
@@ -614,34 +820,32 @@ class CreateTrade extends Component {
                                             <ListItem key={index} disablePadding><ListItemText primary={stock}/></ListItem>
                                         ))}
                                     </List> :
-                                    <ListItem key={0}>
-                                        <h3 style={{marginLeft: "4px", fontSize: 17}}>No issued stocks</h3>
-                                    </ListItem>}
+                                    <ListItem key={0}><h3 style={{marginLeft: "4px", fontSize: 17}}>No issued
+                                        stocks</h3></ListItem>}
                                 <Divider/>
                             </Drawer>
                         </Box>
                     </Container>
 
 
-                    {/* ------------- Trades ------------- */}
-                    <Container component="main" maxWidth="lg">
+                    {/* ------------- TRADE HISTORY TABLE ------------- */}
+                    <Container component="main" maxWidth="lg" style={{width: `calc(100% - 2*${drawerWidth}px)`}}>
                         <CssBaseline/>
-                        <div className={classes.paper}>
-                            <Typography component="h1" variant="h4">
-                                Trade History
-                            </Typography>
-                            <br/><br/>
-                            <TableContainer className={classes.table} component={Paper}>
-                                <Table sx={{minWidth: 650}} aria-label="simple table">
+                        <div className={classes.paper} style={{marginTop: "-22px"}}>
+                            <Typography component="h1" variant="h5">Trade History</Typography>
+                            <br/>
+                            <TableContainer className={classes.table} component={Paper}
+                                            style={{maxHeight: "17rem", overflow: "auto"}}>
+                                <Table sx={{minWidth: 650}} size="small" aria-label="simple table">
                                     <TableHead>
                                         <TableRow>
                                             <TableCell>Initiating Party</TableCell>
                                             <TableCell>Counter Party</TableCell>
-                                            <TableCell align="left">Sell Value</TableCell>
-                                            <TableCell align="left">Sell Amount</TableCell>
-                                            <TableCell align="left">Buy Value</TableCell>
-                                            <TableCell align="left">Buy Amount</TableCell>
+                                            <TableCell align="left">Order Type</TableCell>
+                                            <TableCell align="left">Type</TableCell>
+                                            <TableCell align="left">Volume</TableCell>
                                             <TableCell align="left">Stock</TableCell>
+                                            <TableCell align="left">Price</TableCell>
                                             <TableCell align="left">Trade status</TableCell>
                                             <TableCell align="left">Trade ID</TableCell>
                                         </TableRow>
@@ -650,33 +854,33 @@ class CreateTrade extends Component {
                                         {this.state.trades.map((row, index) => (
                                             <TableRow key={index}
                                                       sx={{'&:last-child td, &:last-child th': {border: 0}}}>
-                                                {row.map((item, idx) => {
+                                                {row.map((item, idx) =>
                                                     // Display only accepted trades
-                                                    if (row[7] === "Accepted") {
-                                                        return <TableCell key={idx} component="th"
-                                                                          scope="row">{item}</TableCell>
-                                                    }
-                                                })}
+                                                    // don't show expiration date
+                                                    (row[8] === "Accepted") && (!item.includes(":")) &&
+                                                    (<TableCell key={idx} component="th" scope="row">{item}</TableCell>)
+                                                )}
                                             </TableRow>
                                         ))}
                                     </TableBody>
                                 </Table>
                             </TableContainer>
                             <br/><br/>
-                            <Typography component="h1" variant="h4">
-                                Trades
-                            </Typography>
-                            <br/><br/>
-                            <TableContainer className={classes.table} component={Paper}>
-                                <Table sx={{minWidth: 650}} aria-label="simple table">
+                            {/*  ----------- MARKET ORDERS TABLE ------------*/}
+                            <Typography component="h1" variant="h5">Market Orders</Typography> <br/>
+                            <TableContainer className={classes.table} component={Paper}
+                                            style={{maxHeight: "14rem", overflow: "auto"}}>
+
+                                <Table sx={{minWidth: 650}} size="small" aria-label="simple table">
                                     <TableHead>
                                         <TableRow>
                                             <TableCell>Initiating Party</TableCell>
-                                            <TableCell align="left">Sell Value</TableCell>
-                                            <TableCell align="left">Sell Amount</TableCell>
-                                            <TableCell align="left">Buy Value</TableCell>
-                                            <TableCell align="left">Buy Amount</TableCell>
+                                            <TableCell align="left">Order Type</TableCell>
+                                            <TableCell align="left">Type</TableCell>
+                                            <TableCell align="left">Volume</TableCell>
                                             <TableCell align="left">Stock</TableCell>
+                                            <TableCell align="left">Price</TableCell>
+                                            <TableCell align="left">Expiration Date</TableCell>
                                             <TableCell align="left">Trade status</TableCell>
                                             <TableCell align="left">Trade ID</TableCell>
                                             <TableCell align="left"></TableCell>
@@ -687,23 +891,71 @@ class CreateTrade extends Component {
                                         {this.state.trades.map((row, index) => (
                                             <TableRow key={index}
                                                       sx={{'&:last-child td, &:last-child th': {border: 0}}}>
-                                                {row.map((item, idx) => {
+                                                {row.map((item, idx) =>
                                                     // Display only pending trades
-                                                    if (row[7] === "Pending" && item !== "null") {
-                                                        return <TableCell key={idx} component="th"
-                                                                          scope="row">{item}</TableCell>
-                                                    }
-                                                })}
+                                                    (row[8] === "Pending") && (item !== "null") && (row[2] === "Market Order") &&
+                                                    (<TableCell key={idx} component="th" scope="row">{item}</TableCell>)
+                                                )}
                                                 {/* Initiating Party cannot counter trade their trade */}
-                                                {(row[7] === "Pending") && (!row[0].includes(this.getPartyfromPort())) &&
+                                                {(row[8] === "Pending") && (!row[0].includes(this.getPartyfromPort())) && (row[2] === "Market Order") &&
                                                 <TableCell component="th" scope="row">
-                                                    <Button style={{marginBottom: 10}}
-                                                            type="submit"
-                                                            fullWidth
-                                                            variant="contained"
-                                                            color="primary"
-                                                            onClick={() => this.counterTradeButton(index, row[0])}>
-                                                        Accept
+                                                    <Button
+                                                        size='small'
+                                                        style={{marginBottom: 5}}
+                                                        type="submit"
+                                                        fullWidth
+                                                        variant="contained"
+                                                        color="primary"
+                                                        onClick={() => this.counterTradeButton(index, row[0])}>Accept
+                                                    </Button>
+                                                </TableCell>
+                                                }
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
+                            <br/><br/>
+                            {/*  ----------- PENDING ORDERS TABLE ------------*/}
+                            <Typography component="h1" variant="h5">Pending Orders</Typography><br/>
+                            <TableContainer className={classes.table} component={Paper}
+                                            style={{maxHeight: "17rem", overflow: "auto"}}>
+                                <Table sx={{minWidth: 650}} size="small" aria-label="simple table">
+                                    <TableHead>
+                                        <TableRow>
+                                            <TableCell>Initiating Party</TableCell>
+                                            <TableCell align="left">Order Type</TableCell>
+                                            <TableCell align="left">Type</TableCell>
+                                            <TableCell align="left">Volume</TableCell>
+                                            <TableCell align="left">Stock</TableCell>
+                                            <TableCell align="left">Price</TableCell>
+                                            <TableCell align="left">Expiration Date</TableCell>
+                                            <TableCell align="left">Trade status</TableCell>
+                                            <TableCell align="left">Trade ID</TableCell>
+                                            <TableCell align="left"></TableCell>
+                                        </TableRow>
+                                    </TableHead>
+
+                                    <TableBody>
+                                        {this.state.trades.map((row, index) => (
+                                            <TableRow key={index}
+                                                      sx={{'&:last-child td, &:last-child th': {border: 0}}}>
+                                                {row.map((item, idx) =>
+                                                    // Display only pending trades
+                                                    (row[8] === "Pending") && (item !== "null") && (row[2] === "Pending Order") &&
+                                                    (<TableCell key={idx} component="th" scope="row">{item}</TableCell>)
+                                                )}
+                                                {/* Initiating Party cannot counter trade their trade */}
+                                                {(row[8] === "Pending") && (!row[0].includes(this.getPartyfromPort())) && (row[2] === "Pending Order") &&
+                                                <TableCell component="th" scope="row">
+                                                    <Button
+                                                        size='small'
+                                                        style={{marginBottom: 5}}
+                                                        type="submit"
+                                                        fullWidth
+                                                        variant="contained"
+                                                        color="primary"
+                                                        onClick={() => this.counterTradeButton(index, row[0])}>Accept
                                                     </Button>
                                                     {/*<br/>*/}
                                                     {/*<Button*/}

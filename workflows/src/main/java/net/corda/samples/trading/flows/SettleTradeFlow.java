@@ -4,6 +4,7 @@ import co.paralleluniverse.fibers.Suspendable;
 import net.corda.core.flows.FlowException;
 import net.corda.core.flows.FlowLogic;
 import net.corda.core.flows.StartableByRPC;
+import net.corda.core.identity.Party;
 import net.corda.core.transactions.SignedTransaction;
 import net.corda.samples.trading.states.TradeState;
 
@@ -16,6 +17,7 @@ import net.corda.samples.trading.states.TradeState;
 public class SettleTradeFlow extends FlowLogic<SignedTransaction> {
 
     private final TradeState counterTradeState;
+    private Party seller;
 
     public SettleTradeFlow(TradeState counterTradeState) {
         this.counterTradeState = counterTradeState;
@@ -25,10 +27,11 @@ public class SettleTradeFlow extends FlowLogic<SignedTransaction> {
     @Suspendable
     public SignedTransaction call() throws FlowException {
         // TODO: if a subflow fails then revert all
-        if (counterTradeState.getSellQuantity() != 0) // called by seller/initiatingParty
-            subFlow(new DvPInitiatorFlow(counterTradeState.getStockName(), counterTradeState.getSellQuantity(), counterTradeState.getCounterParty(), counterTradeState.getSellQuantity()*counterTradeState.getSellValue()));
-        else if (counterTradeState.getBuyQuantity() != 0) // called by seller/counterParty
-            subFlow(new DvPInitiatorFlow(counterTradeState.getStockName(), counterTradeState.getBuyQuantity(), counterTradeState.getInitiatingParty(), counterTradeState.buyQuantity*counterTradeState.getBuyValue()));
+        if (counterTradeState.getTradeType().equals("Sell")) // called by seller/initiatingParty
+            seller = counterTradeState.getCounterParty();
+        else if (counterTradeState.getTradeType().equals("Buy"))
+            seller = counterTradeState.getInitiatingParty(); // called by seller/counterParty
+        subFlow(new DvPInitiatorFlow(counterTradeState.getStockName(), counterTradeState.getStockQuantity(), seller, counterTradeState.getStockQuantity() * counterTradeState.getStockPrice()));
         return subFlow(new CounterTradeFlow.CounterInitiator(counterTradeState));
 
     }

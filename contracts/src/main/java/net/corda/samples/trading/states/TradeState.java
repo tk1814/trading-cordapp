@@ -16,47 +16,32 @@ import java.util.*;
 @BelongsToContract(TradeContract.class)
 public class TradeState implements ContractState, LinearState {
 
-    public double sellValue;
-    public int sellQuantity;
-    public double buyValue;
-
-    public double getSellValue() {
-        return sellValue;
-    }
-
-    public int getSellQuantity() {
-        return sellQuantity;
-    }
-
-    public int getBuyQuantity() {
-        return buyQuantity;
-    }
-
-    public int buyQuantity;
     public Party initiatingParty;
     @Nullable
     public Party counterParty = null;
+    public String orderType;
+    public String tradeType;
+    public String stockName;
+    public double stockPrice;
+    public int stockQuantity;
+    public String expirationDate;
     public String tradeStatus;
     private UniqueIdentifier linearId;
-    private String timestamp; // TODO
-    public String stockName;
+    // TODO: add timestamps
 
-    public TradeState(double sellValue, int sellQuantity, double buyValue, int buyQuantity, Party initiatingParty, Party counterParty, String tradeStatus, UniqueIdentifier linearId, String stockName) {
-        this.sellValue = sellValue;
-        this.sellQuantity = sellQuantity;
-        this.buyValue = buyValue;
-        this.buyQuantity = buyQuantity;
+    public TradeState(Party initiatingParty, @Nullable Party counterParty, String orderType, String tradeType, String stockName, double stockPrice, int stockQuantity, String expirationDate, String tradeStatus, UniqueIdentifier linearId) {
         this.initiatingParty = initiatingParty;
         if (counterParty != null) {
             this.counterParty = counterParty;
         }
+        this.orderType = orderType;
+        this.tradeType = tradeType;
+        this.stockName = stockName;
+        this.stockPrice = stockPrice;
+        this.stockQuantity = stockQuantity;
+        this.expirationDate = expirationDate;
         this.tradeStatus = tradeStatus;
         this.linearId = linearId;
-        this.stockName = stockName;
-    }
-
-    public double getBuyValue() {
-        return buyValue;
     }
 
     public Party getInitiatingParty() {
@@ -68,6 +53,26 @@ public class TradeState implements ContractState, LinearState {
         return counterParty;
     }
 
+    public String getOrderType() {
+        return orderType;
+    }
+
+    public String getTradeType() {
+        return tradeType;
+    }
+
+    public void setStockName(String stockName) {
+        this.stockName = stockName;
+    }
+
+    public double getStockPrice() {
+        return stockPrice;
+    }
+
+    public int getStockQuantity() {
+        return stockQuantity;
+    }
+
     public String getTradeStatus() {
         return tradeStatus;
     }
@@ -76,16 +81,28 @@ public class TradeState implements ContractState, LinearState {
         return linearId;
     }
 
+    public void setOrderType(String orderType) {
+        this.orderType = orderType;
+    }
+
+    public void setTradeType(String tradeType) {
+        this.tradeType = tradeType;
+    }
+
+    public void setStockPrice(double stockPrice) {
+        this.stockPrice = stockPrice;
+    }
+
+    public void setStockQuantity(int stockQuantity) {
+        this.stockQuantity = stockQuantity;
+    }
+
     public void setTradeId(UniqueIdentifier linearId) {
         this.linearId = linearId;
     }
 
     public String getStockName() {
         return stockName;
-    }
-
-    public void setStockName(String stockName) {
-        this.stockName = stockName;
     }
 
     /*
@@ -109,7 +126,7 @@ public class TradeState implements ContractState, LinearState {
 
     @Override
     public String toString() {
-        return initiatingParty + "|" + counterParty + "|" + sellValue + "|" + sellQuantity
-                + "|" + buyValue + "|" + buyQuantity + "|" + stockName + "|" + tradeStatus + "|" + linearId;
+        return initiatingParty + "|" + counterParty + "|" + orderType + "|" + tradeType + "|" + stockQuantity
+                + "|" + stockName + "|" + stockPrice + "|" + expirationDate + "|" + tradeStatus + "|" + linearId;
     }
 }

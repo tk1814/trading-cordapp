@@ -151,7 +151,7 @@ public class CounterTradeFlow {
                         ContractState output = stx.getTx().getOutputs().get(0).getData();
                         require.using("This must be an trade transaction.", output instanceof TradeState);
                         TradeState trade = (TradeState) output;
-                        require.using("I won't accept trade with a negative value", trade.getBuyValue() >= 0);
+                        require.using("I won't accept trade with a negative value", trade.getStockPrice() >= 0);
                         return null;
                     });
                 }
