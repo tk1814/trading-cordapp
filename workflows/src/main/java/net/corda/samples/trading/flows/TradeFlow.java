@@ -2,8 +2,6 @@ package net.corda.samples.trading.flows;
 
 import co.paralleluniverse.fibers.Suspendable;
 import net.corda.core.contracts.Command;
-import net.corda.core.contracts.ContractState;
-import net.corda.core.crypto.SecureHash;
 import net.corda.core.flows.*;
 import net.corda.core.identity.CordaX500Name;
 import net.corda.core.identity.Party;
@@ -16,12 +14,8 @@ import net.corda.samples.trading.contracts.TradeContract;
 import net.corda.samples.trading.states.TradeState;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
-
-import static net.corda.core.contracts.ContractsDSL.requireThat;
 
 /**
  * This flow allows two parties (the [Creator] and the [CounterParty]) to come to an agreement about the Trade.
