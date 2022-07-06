@@ -88,6 +88,83 @@ sourceSets {
         resources {
             srcDir rootProject.file("config/dev")
         }
+        notary = [
+                validating: false,
+                serviceLegalName: "O=BFT,L=Zurich,C=CH",
+                bftSMaRt: [
+                        replicaId: 0,
+                        clusterAddresses: clusterAddresses,
+                        debug: true
+                ]
+        ]
+    }
+    node {
+        name "O=Notary Service 1,L=Zurich,C=CH"
+        p2pPort 10013
+        rpcSettings {
+            address "localhost:10014"
+            adminAddress "localhost:10114"
+        }
+        notary = [
+                validating: false,
+                serviceLegalName: "O=BFT,L=Zurich,C=CH",
+                bftSMaRt: [
+                        replicaId: 1,
+                        clusterAddresses: clusterAddresses,
+                        debug: true
+                ]
+        ]
+    }
+    node {
+        name "O=Notary Service 2,L=Zurich,C=CH"
+        p2pPort 10017
+        rpcSettings {
+            address "localhost:10018"
+            adminAddress "localhost:10118"
+        }
+        notary = [
+                validating: false,
+                serviceLegalName: "O=BFT,L=Zurich,C=CH",
+                bftSMaRt: [
+                        replicaId: 2,
+                        clusterAddresses: clusterAddresses,
+                        debug: true
+                ]
+        ]
+    }
+    node {
+        name "O=Notary Service 3,L=Zurich,C=CH"
+        p2pPort 10021
+        rpcSettings {
+            address "localhost:10022"
+            adminAddress "localhost:10122"
+        }
+        notary = [
+                validating: false,
+                serviceLegalName: "O=BFT,L=Zurich,C=CH",
+                bftSMaRt: [
+                        replicaId: 3,
+                        clusterAddresses: clusterAddresses,
+                        debug: true
+                ]
+        ]
+    }
+    node {
+        name "O=Notary Service 4,L=Zurich,C=CH"
+        p2pPort 10221
+        rpcSettings {
+            address "localhost:10222"
+            adminAddress "localhost:10223"
+        }
+        notary = [
+                validating: false,
+                serviceLegalName: "O=BFT,L=Zurich,C=CH",
+                bftSMaRt: [
+                        replicaId: 4,
+                        clusterAddresses: clusterAddresses,
+                        debug: true
+                ]
+        ]
     }
 }
 
@@ -121,20 +198,22 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
     if (JavaVersion.current() != JavaVersion.VERSION_1_8){
         throw new IllegalArgumentException("GradleException: This build must be run with java 8") //GradleException("This build must be run with java 8")
     }
+    def clusterAddresses = ["localhost:11000", "localhost:11010", "localhost:11020", "localhost:11030", "localhost:11040"]
 
     nodeDefaults {
         projectCordapp { deploy = true }
         cordapp project(':contracts')
         cordapp project(':workflows')
+
+        extraConfig = [h2Settings: [address: "localhost:0"]]
     }
 
     node {
-        name "O=Notary,L=London,C=GB"
-        notary = [validating : false]
-        p2pPort 10002
+        name "O=Notary Service 0,L=Zurich,C=CH"
+        p2pPort 10009
         rpcSettings {
-            address("localhost:10003")
-            adminAddress("localhost:10043")
+            address "localhost:10010"
+            adminAddress "localhost:10110"
         }
     }
     node {
