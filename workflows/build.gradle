@@ -2,6 +2,13 @@ apply plugin: 'net.corda.plugins.cordapp'
 apply plugin: 'net.corda.plugins.cordformation'
 apply plugin: 'net.corda.plugins.quasar-utils'
 
+task installQuasar(type: Copy) {
+    destinationDir rootProject.file("lib")
+    from(configurations.quasar) {
+        rename 'quasar-core(.*).jar', 'quasar.jar'
+    }
+}
+
 cordapp {
     targetPlatformVersion corda_platform_version
     minimumPlatformVersion corda_platform_version
