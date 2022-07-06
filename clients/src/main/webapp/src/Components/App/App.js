@@ -9,7 +9,6 @@ import {
 import './App.css';
 
 import CreateTrade from '../CreateTrade/CreateTrade.js';
-import Trades from '../Trades/Trades.js';
 import Me from './Me';
 
 function App(props) {
@@ -20,7 +19,6 @@ function App(props) {
         <Switch>
           <Route exact path="/" component={CreateTrade}/>
           <Route path="/create" component={CreateTrade}/>
-          <Route path="/trades" component={Trades}/>
           <Route path="/me" component={Me}/>
         </Switch>
       </div>

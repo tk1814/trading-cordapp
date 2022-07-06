@@ -62,14 +62,9 @@ public class TradeContract implements Contract {
 
                 // Trade-specific constraints.
                 //  require.using("The sell quantity and the buy quantity cannot be the same entity.", output.sellQuantity != output.buyQuantity);
-                require.using("The Trade's sell value must be non-negative.", output.sellValue >= 0);
-                require.using("The Trade's buy value must be non-negative.", output.buyValue >= 0);
-                require.using("The Trade's sell quantity can't be empty.", output.sellQuantity >= 0);
-                require.using("The Trade's buy quantity can't be empty.", output.buyQuantity >= 0);
-
+                require.using("The Trade's stock price must be non-negative.", output.stockPrice > 0);
+                require.using("The Trade's stock quantity must be positive.", output.stockQuantity > 0);
                 require.using("InitiatingParty must sign Trade", requiredSigners.contains(output.getInitiatingParty().getOwningKey()));
-                //  require.using("CounterParty must sign Trade", requiredSigners.contains(output.getCounterParty().getOwningKey()));
-
                 return null;
             });
 
@@ -84,11 +79,8 @@ public class TradeContract implements Contract {
 
                 // Trade-specific constraints.
                 //  require.using("The sell quantity and the buy quantity cannot be the same entity.", output.sellQuantity != output.buyQuantity);
-                require.using("The Trade's sell value must be non-negative.", output.sellValue >= 0);
-                require.using("The Trade's buy value must be non-negative.", output.buyValue >= 0);
-                require.using("The Trade's sell quantity can't be empty.", output.sellQuantity >= 0);
-                require.using("The Trade's buy quantity can't be empty.", output.buyQuantity >= 0);
-
+                require.using("The Trade's stock price must be non-negative.", output.stockPrice > 0);
+                require.using("The Trade's stock quantity must be positive.", output.stockQuantity > 0);
                 require.using("InitiatingParty must sign Trade", requiredSigners.contains(output.getInitiatingParty().getOwningKey()));
                 require.using("CounterParty must sign Trade", requiredSigners.contains(output.getCounterParty().getOwningKey()));
                 return null;

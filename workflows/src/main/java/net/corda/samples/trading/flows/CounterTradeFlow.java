@@ -20,10 +20,10 @@ import java.util.stream.*;
 import static net.corda.core.contracts.ContractsDSL.requireThat;
 
 /**
- * This flow allows two parties (the [Initiator] and the [Acceptor]) to come to an agreement about the Trade encapsulated
+ * This flow allows two parties (the [Initiator] and the [Responder]) to come to an agreement about the Trade encapsulated
  * within an [TradeState].
  * <p>
- * In our simple trading, the [Acceptor] always accepts a valid Trade.
+ * In our simple trading, the [Responder] always accepts a valid Trade.
  * <p>
  * These flows have deliberately been implemented by using only the call() method for ease of understanding. In
  * practice we would recommend splitting up the various stages of the flow into sub-routines.
@@ -89,7 +89,6 @@ public class CounterTradeFlow {
                 throw new RuntimeException("Trade state with trade ID: " + this.counterTradeState.getTradeId() + " was not found in the vault.");
             }
             StateAndRef<TradeState> inputTradeState = inputTradeStateList.get(0);
-            System.out.println(inputTradeState);
 
             TradeContract.Commands.CounterTrade command = new TradeContract.Commands.CounterTrade();
             List<PublicKey> requiredSigns = ImmutableList.of(counterTradeState.getInitiatingParty().getOwningKey(), counterTradeState.getCounterParty().getOwningKey());
@@ -110,7 +109,15 @@ public class CounterTradeFlow {
             // Stage 4.
             progressTracker.setCurrentStep(GATHERING_SIGS);
             // Send the state to the initiating party, and receive it back with their signature.
-            FlowSession otherPartyFlow = initiateFlow(counterTradeState.getInitiatingParty());
+
+            FlowSession otherPartyFlow;
+            if (getOurIdentity().equals(counterTradeState.getInitiatingParty()))
+                otherPartyFlow = initiateFlow(counterTradeState.getCounterParty());
+            else if (getOurIdentity().equals(counterTradeState.getCounterParty()))
+                otherPartyFlow = initiateFlow(counterTradeState.getInitiatingParty());
+            else
+                throw new RuntimeException("Trade settlement flow is called by a third party - not involved in the transaction");
+
             SignedTransaction fullySignedTx = subFlow(
                     new CollectSignaturesFlow(partSignedTx, ImmutableSet.of(otherPartyFlow), GATHERING_SIGS.childProgressTracker()));
 
@@ -144,7 +151,7 @@ public class CounterTradeFlow {
                         ContractState output = stx.getTx().getOutputs().get(0).getData();
                         require.using("This must be an trade transaction.", output instanceof TradeState);
                         TradeState trade = (TradeState) output;
-                        require.using("I won't accept trade with a negative value", trade.getBuyValue() >= 0);
+                        require.using("I won't accept trade with a negative value", trade.getStockPrice() >= 0);
                         return null;
                     });
                 }
