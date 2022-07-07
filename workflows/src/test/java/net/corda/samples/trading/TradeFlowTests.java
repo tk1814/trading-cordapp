@@ -39,6 +39,8 @@ public class TradeFlowTests {
     protected StartedMockNode partyA;
     protected StartedMockNode partyB;
     protected String expirationDate;
+    protected String tradeDate;
+    protected String settlementDate;
     protected Party notaryParty;
 
     public static TestIdentity PARTY_A = new TestIdentity(new CordaX500Name("PartyA", "TestVillage", "US"));
@@ -72,12 +74,16 @@ public class TradeFlowTests {
         notary = network.getNotaryNodes().get(0);
         notaryParty = notary.getInfo().getLegalIdentities().get(0);
         expirationDate = "2023-03-03T03:03";
+        tradeDate = "2022-07-07T07:07";
+        settlementDate = "2022-08-28T08:08";
         network.startNodes();
 
         tradeState = new TradeState(partyA.getInfo().getLegalIdentities().get(0), null, "Pending Order",
-                "Sell", STOCK_SYMBOL, STOCK_PRICE, TRADING_STOCK_QUANTITY, expirationDate, "Pending", LINEAR_ID);
+                "Sell", STOCK_SYMBOL, STOCK_PRICE, TRADING_STOCK_QUANTITY, expirationDate, "Pending",
+                tradeDate, null, LINEAR_ID);
         counterTradeState = new TradeState(partyA.getInfo().getLegalIdentities().get(0), partyB.getInfo().getLegalIdentities().get(0),
-                "Pending Order", "Sell", STOCK_SYMBOL, STOCK_PRICE, TRADING_STOCK_QUANTITY, expirationDate, "Accepted", LINEAR_ID);
+                "Pending Order", "Sell", STOCK_SYMBOL, STOCK_PRICE, TRADING_STOCK_QUANTITY, expirationDate, "Accepted",
+                tradeDate, settlementDate, LINEAR_ID);
     }
 
     @After

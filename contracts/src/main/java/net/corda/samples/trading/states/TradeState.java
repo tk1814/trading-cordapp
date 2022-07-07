@@ -11,7 +11,7 @@ import net.corda.samples.trading.contracts.TradeContract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
+import java.util.List;
 
 @BelongsToContract(TradeContract.class)
 public class TradeState implements ContractState, LinearState {
@@ -26,10 +26,14 @@ public class TradeState implements ContractState, LinearState {
     public int stockQuantity;
     public String expirationDate;
     public String tradeStatus;
+    public String tradeDate;
+    public String settlementDate;
     private UniqueIdentifier linearId;
     // TODO: add timestamps
 
-    public TradeState(Party initiatingParty, @Nullable Party counterParty, String orderType, String tradeType, String stockName, double stockPrice, int stockQuantity, String expirationDate, String tradeStatus, UniqueIdentifier linearId) {
+    public TradeState(Party initiatingParty, @Nullable Party counterParty, String orderType, String tradeType, String stockName,
+                      double stockPrice, int stockQuantity, String expirationDate, String tradeStatus, String tradeDate, String settlementDate,
+                      UniqueIdentifier linearId) {
         this.initiatingParty = initiatingParty;
         if (counterParty != null) {
             this.counterParty = counterParty;
@@ -41,6 +45,8 @@ public class TradeState implements ContractState, LinearState {
         this.stockQuantity = stockQuantity;
         this.expirationDate = expirationDate;
         this.tradeStatus = tradeStatus;
+        this.tradeDate = tradeDate;
+        this.settlementDate = settlementDate;
         this.linearId = linearId;
     }
 
@@ -126,7 +132,17 @@ public class TradeState implements ContractState, LinearState {
 
     @Override
     public String toString() {
-        return initiatingParty + "|" + counterParty + "|" + orderType + "|" + tradeType + "|" + stockQuantity
-                + "|" + stockName + "|" + stockPrice + "|" + expirationDate + "|" + tradeStatus + "|" + linearId;
+        return "{" + "\"initiatingParty\":\"" + initiatingParty + "\"," +
+                "\"counterParty\":\"" + counterParty + "\"," +
+                "\"orderType\":\"" + orderType + "\"," +
+                "\"tradeType\":\"" + tradeType + "\"," +
+                "\"stockQuantity\":\"" + stockQuantity + "\"," +
+                "\"stockName\":\"" + stockName + "\"," +
+                "\"stockPrice\":\"" + stockPrice + "\"," +
+                "\"expirationDate\":\"" + expirationDate + "\"," +
+                "\"tradeStatus\":\"" + tradeStatus + "\"," +
+                "\"tradeDate\":\"" + tradeDate + "\"," +
+                "\"settlementDate\":\"" + settlementDate + "\"," +
+                "\"linearId\":\"" + linearId + "\"}";
     }
 }

@@ -13,6 +13,7 @@ import net.corda.core.node.NodeInfo;
 import net.corda.core.transactions.SignedTransaction;
 import net.corda.samples.trading.flows.*;
 import net.corda.samples.trading.states.TradeState;
+import org.json.simple.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -118,6 +119,7 @@ public class Controller {
         double stockPrice = convertedObject.get("stockPrice").getAsDouble();
         int stockQuantity = convertedObject.get("stockQuantity").getAsInt();
         String expirationDate = convertedObject.get("expirationDate").getAsString();
+        String tradeDate = convertedObject.get("tradeDate").getAsString();
 
         JsonObject resp = new JsonObject();
 
@@ -134,7 +136,7 @@ public class Controller {
             try {
                 TradeState tradeState = new TradeState(proxy.wellKnownPartyFromX500Name(myLegalName), null,
                         orderType, tradeType, stockName, stockPrice, stockQuantity, expirationDate, "Pending",
-                        new UniqueIdentifier());
+                        tradeDate, null, new UniqueIdentifier());
 
                 SignedTransaction signedTx = proxy.startTrackedFlowDynamic(TradeFlow.Initiator.class, tradeState).getReturnValue().get();
                 System.out.println("signedTx.getId() =  :" + signedTx.getId());
@@ -168,6 +170,8 @@ public class Controller {
         String expirationDate = convertedObject.get("expirationDate").getAsString();
         String tradeStatus = convertedObject.get("tradeStatus").getAsString();
         String tradeID = convertedObject.get("tradeID").getAsString();
+        String tradeDate = convertedObject.get("tradeDate").getAsString();
+        String settlementDate = convertedObject.get("settlementDate").getAsString();
 
         JsonObject resp = new JsonObject();
 
@@ -182,7 +186,8 @@ public class Controller {
                 UniqueIdentifier linearId = new UniqueIdentifier(null, UUID.fromString(tradeID));
                 TradeState counterTradeState = new TradeState(this.proxy.wellKnownPartyFromX500Name(CordaX500Name.parse(initiatingParty)),
                         this.proxy.wellKnownPartyFromX500Name(CordaX500Name.parse(counterParty)), orderType,
-                        tradeType, stockName, stockPrice, stockQuantity, expirationDate, tradeStatus, linearId);
+                        tradeType, stockName, stockPrice, stockQuantity, expirationDate, tradeStatus, tradeDate,
+                        settlementDate, linearId);
 
                 SignedTransaction signedTx = proxy.startTrackedFlowDynamic(SettleTradeFlow.class, counterTradeState).getReturnValue().get();
 

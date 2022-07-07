@@ -63,9 +63,9 @@ class CreateTrade extends Component {
             counterParty: "null",
             stockPrice: 0,
             stockQuantity: 0,
-            stockAmount: 1,
-            moneyAmount: 1,
-            stockName: null,
+            stockAmountToIssue: 1,
+            moneyAmountToIssue: 1,
+            stockNameToIssue: null,
             response: null,
             balance: 0,
             stockBalanceList: [],
@@ -76,19 +76,19 @@ class CreateTrade extends Component {
             askPrice: "--",
             intervalId: null,
             expirationDate: moment(new Date()).add(10, 'm').toDate().toISOString().slice(0, 16),
-            stockCodes: ["AAPL", "AMZN", "TSLA", "NFLX", "META", "GOOG", "TWTR"]
+            stockCodes: ["AAPL", "AMZN", "TSLA", "NFLX", "META", "GOOG", "TWTR"],
         }
     }
 
 
-    stockAmountChange = (e) => {
-        this.setState({stockAmount: e.target.value});
+    stockAmountToIssueChange = (e) => {
+        this.setState({stockAmountToIssue: e.target.value});
     }
-    stockNameChange = (e) => {
-        this.setState({stockName: e.target.value});
+    stockNameToIssueChange = (e) => {
+        this.setState({stockNameToIssue: e.target.value});
     }
-    moneyAmountChange = (e) => {
-        this.setState({moneyAmount: e.target.value});
+    moneyAmountToIssueChange = (e) => {
+        this.setState({moneyAmountToIssue: e.target.value});
     }
     stockPriceChange = (e) => {
         this.setState({stockPrice: e.target.value});
@@ -118,12 +118,12 @@ class CreateTrade extends Component {
     }
 
     issueStock = (e) => {
-        if (this.state.stockNames.includes(this.state.stockName))
+        if (this.state.stockNames.includes(this.state.stockNameToIssue))
             window.alert("Cannot issue stock with an existing name.")
         else {
             const data = {
-                amount: parseFloat(this.state.stockAmount).toFixed(0),
-                name: this.state.stockName
+                amount: parseFloat(this.state.stockAmountToIssue).toFixed(0),
+                name: this.state.stockNameToIssue
             }
 
             let PORT = localStorage.getItem('port');
@@ -145,7 +145,7 @@ class CreateTrade extends Component {
     }
 
     issueMoney = (e) => {
-        const data = {amount: parseFloat(this.state.moneyAmount).toFixed(2)}
+        const data = {amount: parseFloat(this.state.moneyAmountToIssue).toFixed(2)}
         let PORT = localStorage.getItem('port');
         axios.post(URL + PORT + '/issueMoney', data, {
             headers: headers
@@ -237,7 +237,7 @@ class CreateTrade extends Component {
         }).then(res => {
             let trades = res.data;
             trades.forEach(function (item, index) {
-                trades[index] = item.split("|");
+                trades[index] = JSON.parse(item);
             });
             let invertedTrades = trades.reverse();
             this.setState({trades: invertedTrades});
@@ -267,47 +267,150 @@ class CreateTrade extends Component {
         window.location.reload();
     }
 
-    createPendingOrder = (e) => {
+    checkEnoughBalance = () => {
+
+        let committedMoneyBalance = 0.0;
+        let committedStockBalance = 0;
+        // let party = this.getPartyfromPort();
+        let party = this.state.counterParty;
+        let stockToTrade = this.state.stockToTrade;
+
+        this.state.trades.forEach(function (trade, index) {
+            // take current node's pending trades to buy
+            if (trade.initiatingParty.includes(party) && trade.tradeStatus === "Pending" && trade.tradeType === "Buy") {
+                committedMoneyBalance += parseFloat((parseFloat(trade.stockPrice) * parseFloat(trade.stockQuantity)).toFixed(2));
+            }
+            if (trade.initiatingParty.includes(party) && trade.tradeStatus === "Pending" && trade.tradeType === "Sell" && trade.stockName === stockToTrade) {
+                committedStockBalance += parseInt(trade.stockQuantity);
+            }
+        });
+        console.log(committedMoneyBalance, committedStockBalance)
+        return [committedMoneyBalance, committedStockBalance]
+    }
+
+    createTradeOrder = (e, marketOrderType) => {
         e.preventDefault();
 
-        let current = new Date().toISOString().slice(0, 16)
-        let selected = this.state.expirationDate;
-        let currentDateTime = new Date(current);
-        let selectedDateTime = new Date(selected);
-        let currentDate = current.slice(0, 10)
+        let balances = this.checkEnoughBalance();
+        let committedMoneyBalance = balances[0];
+        let committedStockBalance = balances[1];
 
-        // don't allow previous dates
-        // if today's date is chosen: don't allow previous times
-        if (this.state.stockPrice === 0 && this.state.stockQuantity === 0) {
-            window.alert("Cannot create trade with 0 values.")
-        } else if (this.state.expirationDate === null) {
-            window.alert("Null expiration date.")
-        } else if (selectedDateTime.getDate() < currentDateTime.getDate()) {
-            window.alert("Invalid expiration day.")
-        } else if (selectedDateTime.getMonth() < currentDateTime.getMonth()) {
-            window.alert("Invalid expiration month.")
-        } else if (selectedDateTime.getFullYear() < currentDateTime.getFullYear()) {
-            window.alert("Invalid expiration year.")
-        } else if (currentDate === this.state.expirationDate.slice(0, 10) && selectedDateTime.getTime() < currentDateTime.getTime()) {
-            window.alert("Invalid expiration time.")
-        } else {
-            let tradeType;
-            if (this.state.alignment === "sell") {
-                tradeType = "Sell";
-            } else if (this.state.alignment === "buy") {
-                tradeType = "Buy";
+        // get current stock balance
+        let stockBalanceAndName = this.state.stockBalanceList.find((stockSymbol) => stockSymbol.includes(this.state.stockToTrade));
+        let stockBalance = parseInt(stockBalanceAndName.trim().split(" ")[0]);
+        let moneyBalance = parseFloat(this.state.balance.trim().split(" ")[0]);
+
+        let data = null;
+        if (marketOrderType === null) { // PENDING ORDER
+
+            let currentDateTime = new Date();
+            let selectedDateTime = new Date(this.state.expirationDate);
+
+            // don't allow previous expiration dates
+            // if today's date is chosen as expiration date: don't allow previous times
+            if (this.state.stockPrice === 0 || this.state.stockQuantity === 0 || this.state.stockQuantity < 0 || this.state.stockPrice < 0) {
+                window.alert("Cannot create trade with 0 or negative values.")
+            } else if (this.state.expirationDate === null) {
+                window.alert("Null expiration date.")
+            } else if (selectedDateTime.getDate() < currentDateTime.getDate()) {
+                window.alert("Invalid expiration day.")
+            } else if (selectedDateTime.getMonth() < currentDateTime.getMonth()) {
+                window.alert("Invalid expiration month.")
+            } else if (selectedDateTime.getFullYear() < currentDateTime.getFullYear()) {
+                window.alert("Invalid expiration year.")
+            } else if (currentDateTime.toISOString().slice(0, 10) === this.state.expirationDate.slice(0, 10) && selectedDateTime.getTime() < (currentDateTime.getTime() + (5 * 60000))) {
+                window.alert("Invalid expiration time. It should be at least 5 minutes after the current time.")
+            } else {
+                let tradeType = (this.state.alignment === "sell") ? "Sell" : "Buy";
+                let invalidInput = false;
+
+                if (tradeType === "Sell") {
+
+                    // must have enough stocks to sell them
+                    if (parseInt(this.state.stockQuantity) > (stockBalance - committedStockBalance)) {
+                        invalidInput = true;
+                        window.alert("You don't have enough stocks to sell.\nAvailable uncommitted stocks: " + (stockBalance - committedStockBalance) + " " + this.state.stockToTrade + ".");
+                    }
+
+                } else if (tradeType === "Buy") {
+
+                    // must have enough money balance to buy stocks
+                    let cost = parseFloat((parseFloat(this.state.stockPrice) * parseFloat(this.state.stockQuantity)).toFixed(2))
+                    console.log(cost, (moneyBalance - committedMoneyBalance))
+                    if (moneyBalance === 0.0) {
+                        invalidInput = true;
+                        window.alert("You have 0 balance. You cannot buy stocks.")
+                    } else if (cost > (moneyBalance - committedMoneyBalance)) {
+                        invalidInput = true;
+                        window.alert("You don't have enough balance to buy stocks.\nAvailable uncommitted balance: " + (moneyBalance - committedMoneyBalance) + " GBP.")
+                    }
+                }
+
+                if (!invalidInput) {
+                    data = {
+                        counterParty: this.state.counterParty,
+                        orderType: "Pending Order",
+                        tradeType: tradeType,
+                        stockName: this.state.stockToTrade,
+                        stockPrice: parseFloat(this.state.stockPrice).toFixed(2),
+                        stockQuantity: this.state.stockQuantity,
+                        expirationDate: this.state.expirationDate,
+                        tradeDate: currentDateTime.toISOString(),
+                    }
+                }
             }
-            let data = {
-                counterParty: this.state.counterParty,
-                orderType: "Pending Order",
-                tradeType: tradeType,
-                stockName: this.state.stockToTrade,
-                stockPrice: parseFloat(this.state.stockPrice).toFixed(2),
-                stockQuantity: this.state.stockQuantity,
-                expirationDate: this.state.expirationDate
+        } else { // MARKET ORDER
+
+            let stockPrice = (marketOrderType === "sellByMarket") ? this.state.askPrice : this.state.bidPrice;
+
+            if (this.state.stockQuantity === 0 || this.state.stockQuantity < 0) {
+                window.alert("Cannot create trade with 0 or negative values.");
+            } else if (stockPrice === "--" || stockPrice === 0) {
+                window.alert("Invalid stock price.");
+            } else {
+                let tradeType = (marketOrderType === "sellByMarket") ? "Sell" : "Buy";
+                let invalidInput = false;
+
+                if (tradeType === "Sell") {
+
+                    // must have enough stocks to sell them
+                    if (parseInt(this.state.stockQuantity) > (stockBalance - committedStockBalance)) {
+                        invalidInput = true;
+                        window.alert("You don't have enough stocks to sell.\nAvailable uncommitted stocks: " + (stockBalance - committedStockBalance) + " " + this.state.stockToTrade + ".")
+                    }
+
+                } else if (tradeType === "Buy") {
+
+                    // must have enough money balance to buy stocks
+                    let cost = parseFloat((parseFloat(stockPrice) * parseFloat(this.state.stockQuantity)).toFixed(2))
+                    console.log(cost, (moneyBalance - committedMoneyBalance))
+                    if (moneyBalance === 0.0) {
+                        invalidInput = true;
+                        window.alert("You have 0 balance. You cannot buy stocks.")
+                    } else if (cost > (moneyBalance - committedMoneyBalance)) {
+                        invalidInput = true;
+                        window.alert("You don't have enough balance to buy stocks.\nAvailable uncommitted balance: " + (moneyBalance - committedMoneyBalance) + " GBP.")
+                    }
+                }
+
+                if (!invalidInput) {
+                    let currentDateTime = new Date();
+                    data = {
+                        counterParty: this.state.counterParty,
+                        orderType: "Market Order",
+                        tradeType: tradeType,
+                        stockName: this.state.stockToTrade,
+                        stockPrice: stockPrice,
+                        stockQuantity: this.state.stockQuantity,
+                        expirationDate: moment(currentDateTime).add(3, 'm').toDate().toISOString().slice(0, 16), // sets 3 minutes expiration date
+                        tradeDate: currentDateTime.toISOString()
+                    }
+                }
             }
+        }
+
+        if (data !== null) {
             console.log(data);
-
             let PORT = localStorage.getItem('port');
             axios.post(URL + PORT + '/createTrade', data, {
                 headers: headers
@@ -324,6 +427,7 @@ class CreateTrade extends Component {
                 console.log(e);
             });
         }
+
     };
 
     orderTypeChange = (e) => {
@@ -374,7 +478,7 @@ class CreateTrade extends Component {
             params: {region: 'GB', lang: 'en', symbols: stockToTrade},
             headers: {
                 'Content-Type': 'application/json',
-                'x-api-key': 'oxVJNIkhxP2Z4hVB1YE9W91crYWCLvzX5fM6TElC'
+                'x-api-key': 'encUAKVvv05WU9PeClhZc8E69BvSwO4P7HHAFzX5'
             }
         };
 
@@ -401,64 +505,22 @@ class CreateTrade extends Component {
         });
     }
 
-    createMarketOrder(e, marketOrderType) {
-        e.preventDefault();
-        console.log(marketOrderType)
-
-        if (this.state.stockQuantity === 0) {
-            window.alert("Cannot create trade with 0 values.")
-        } else {
-            let tradeType, stockPrice;
-            if (marketOrderType === "sellByMarket") {
-                tradeType = "Sell";
-                stockPrice = this.state.askPrice
-            } else if (marketOrderType === "buyByMarket") {
-                tradeType = "Buy";
-                stockPrice = this.state.bidPrice
-            }
-            let data = {
-                counterParty: this.state.counterParty,
-                orderType: "Market Order",
-                tradeType: tradeType,
-                stockName: this.state.stockToTrade,
-                stockPrice: stockPrice,
-                stockQuantity: this.state.stockQuantity,
-                expirationDate: moment(new Date()).add(3, 'm').toDate().toISOString().slice(0, 16) // sets 3 mins expiration date
-            }
-            console.log(data);
-
-            let PORT = localStorage.getItem('port');
-            axios.post(URL + PORT + '/createTrade', data, {
-                headers: headers
-            }).then(res => {
-                const response = res.data.Response;
-                if (response !== null) {
-                    console.log(response);
-                    this.setState({response});
-                    if (response.includes("committed to ledger")) {
-                        window.location.reload();
-                    }
-                }
-            }).catch(e => {
-                console.log(e);
-            });
-        }
-    }
-
-    counterTradeButton = (index, initiatingParty) => {
+    counterTradeButton = (index) => {
         let partyTrades = this.state.trades;
 
         const data = {
-            initiatingParty: initiatingParty,
+            initiatingParty: partyTrades[index].initiatingParty,
             counterParty: this.state.counterParty,
-            orderType: partyTrades[index][2],
-            tradeType: partyTrades[index][3],
-            stockQuantity: partyTrades[index][4],
-            stockName: partyTrades[index][5],
-            stockPrice: partyTrades[index][6],
-            expirationDate: partyTrades[index][7],
+            orderType: partyTrades[index].orderType,
+            tradeType: partyTrades[index].tradeType,
+            stockQuantity: partyTrades[index].stockQuantity,
+            stockName: partyTrades[index].stockName,
+            stockPrice: partyTrades[index].stockPrice,
+            expirationDate: partyTrades[index].expirationDate,
             tradeStatus: "Accepted",
-            tradeID: partyTrades[index][9],
+            tradeDate: partyTrades[index].tradeDate,
+            settlementDate: new Date().toISOString(),
+            tradeID: partyTrades[index].linearId,
         }
         console.log(data)
 
@@ -511,7 +573,10 @@ class CreateTrade extends Component {
                                 },
                             }} variant="permanent" anchor="left">
                                 <Toolbar>
-                                    <img src={corda_img} style={{width: "80px", marginLeft: "30%"}} alt="corda logo"/>
+                                    <img src={corda_img} style={{
+                                        width: "80px",
+                                        marginLeft: "30%"
+                                    }} alt="corda logo"/>
                                 </Toolbar>
                                 <Divider/>
                                 <br/>
@@ -593,8 +658,8 @@ class CreateTrade extends Component {
                                                 autoComplete="stockQuantity"
                                                 placeholder=""
                                                 onChange={this.stockQuantityChange}
-                                                error={this.stockQuantity === ""}
-                                                helperText={this.stockQuantity === "" ? 'Empty field!' : ' '}/>
+                                                error={this.state.stockQuantity === "" || this.state.stockQuantity < 0}
+                                                helperText={this.state.stockQuantity === "" ? 'Empty field!' : ' '}/>
                                         </Grid>
                                         <Grid item xs={10}>
                                             <TextField
@@ -617,7 +682,6 @@ class CreateTrade extends Component {
                                         <Grid item xs={10}>
                                             <TextField
                                                 fullWidth
-                                                defaultValue={moment(new Date()).add(10, 'm').toDate().toISOString().slice(0, 16)}
                                                 id="expirationDate"
                                                 label="Expiration Date"
                                                 inputProps={{
@@ -637,7 +701,7 @@ class CreateTrade extends Component {
                                                 fullWidth
                                                 variant="contained"
                                                 color="primary"
-                                                onClick={this.createPendingOrder}>
+                                                onClick={(e) => this.createTradeOrder(e, null)}>
                                                 Place Order
                                             </Button>
                                         </Grid>
@@ -665,8 +729,8 @@ class CreateTrade extends Component {
                                                 InputLabelProps={{style: {}}}
                                                 placeholder=""
                                                 onChange={this.stockQuantityChange}
-                                                error={this.stockQuantity === ""}
-                                                helperText={this.stockQuantity === "" ? 'Empty field!' : ' '}/>
+                                                error={this.state.stockQuantity === "" || this.state.stockQuantity < 0}
+                                                helperText={this.state.stockQuantity === "" ? 'Empty field!' : ' '}/>
                                         </Grid>
                                         <Grid item xs={10}>
                                             <p style={{
@@ -683,7 +747,7 @@ class CreateTrade extends Component {
                                                     fullWidth
                                                     variant="contained"
                                                     color="primary"
-                                                    onClick={(e) => this.createMarketOrder(e, "sellByMarket")}>
+                                                    onClick={(e) => this.createTradeOrder(e, "sellByMarket")}>
                                                     Sell by Market
                                                 </Button>
                                             </Grid>
@@ -694,7 +758,7 @@ class CreateTrade extends Component {
                                                     fullWidth
                                                     variant="contained"
                                                     color="primary"
-                                                    onClick={(e) => this.createMarketOrder(e, "buyByMarket")}>
+                                                    onClick={(e) => this.createTradeOrder(e, "buyByMarket")}>
                                                     Buy By Market
                                                 </Button>
                                             </Grid>
@@ -710,17 +774,17 @@ class CreateTrade extends Component {
                                         <TextField
                                             required
                                             size="small"
-                                            name="moneyAmount"
+                                            name="moneyAmountToIssue"
                                             variant="outlined"
                                             fullWidth
-                                            id="moneyAmount"
+                                            id="moneyAmountToIssue"
                                             label="Amount (GBP)"
                                             InputProps={{style: {}}}
                                             InputLabelProps={{style: {}}}
                                             placeholder=""
-                                            onChange={this.moneyAmountChange}
-                                            error={this.state.moneyAmount === ""}
-                                            helperText={this.state.moneyAmount === "" ? 'Empty field!' : ' '}/>
+                                            onChange={this.moneyAmountToIssueChange}
+                                            error={this.state.moneyAmountToIssue === ""}
+                                            helperText={this.state.moneyAmountToIssue === "" ? 'Empty field!' : ' '}/>
                                     </Grid>
                                     <Grid item xs={10}>
                                         <Button
@@ -755,7 +819,7 @@ class CreateTrade extends Component {
                                                     labelId="demo-simple-select-label"
                                                     id="demo-simple-select"
                                                     label="Stock Name"
-                                                    onChange={this.stockNameChange}>
+                                                    onChange={this.stockNameToIssueChange}>
                                                     {this.state.stockCodes.map((stock, key) => (
                                                         <MenuItem key={key} value={stock}>{stock} </MenuItem>))}
                                                 </Select>
@@ -765,14 +829,14 @@ class CreateTrade extends Component {
                                             <TextField
                                                 size="small"
                                                 required
-                                                name="stockAmount"
+                                                name="stockAmountToIssue"
                                                 variant="outlined"
                                                 fullWidth
-                                                id="stockAmount"
+                                                id="stockAmountToIssue"
                                                 label="Stock Amount"
-                                                onChange={this.stockAmountChange}
-                                                error={this.state.stockAmount === ""}
-                                                helperText={this.state.stockAmount === "" ? 'Empty field!' : ' '}
+                                                onChange={this.stockAmountToIssueChange}
+                                                error={this.state.stockAmountToIssue === ""}
+                                                helperText={this.state.stockAmountToIssue === "" ? 'Empty field!' : ' '}
                                             />
                                         </Grid>
                                         <Grid item xs={10}>
@@ -795,7 +859,7 @@ class CreateTrade extends Component {
                     </Container>
 
 
-                    {/* ------------- Stocks ------------- */}
+                    {/* ------------- Balance & Stocks ------------- */}
                     <Container component="main" maxWidth="sm">
                         <Box sx={{display: 'flex'}}>
                             <CssBaseline/>
@@ -846,20 +910,30 @@ class CreateTrade extends Component {
                                             <TableCell align="left">Volume</TableCell>
                                             <TableCell align="left">Stock</TableCell>
                                             <TableCell align="left">Price</TableCell>
+                                            <TableCell align="left">Trade Date</TableCell>
+                                            <TableCell align="left">Settlement Date</TableCell>
                                             <TableCell align="left">Trade status</TableCell>
                                             <TableCell align="left">Trade ID</TableCell>
                                         </TableRow>
                                     </TableHead>
                                     <TableBody>
+
                                         {this.state.trades.map((row, index) => (
-                                            <TableRow key={index}
-                                                      sx={{'&:last-child td, &:last-child th': {border: 0}}}>
-                                                {row.map((item, idx) =>
-                                                    // Display only accepted trades
-                                                    // don't show expiration date
-                                                    (row[8] === "Accepted") && (!item.includes(":")) &&
-                                                    (<TableCell key={idx} component="th" scope="row">{item}</TableCell>)
-                                                )}
+                                            // Display only accepted trades
+                                            // don't show expiration date
+                                            (row.tradeStatus === "Accepted") &&
+                                            <TableRow key={index} sx={{'&:last-child td, &:last-child th': {border: 0}}}>
+                                                <TableCell key={0} component="th" scope="row">{row.initiatingParty}</TableCell>
+                                                <TableCell key={1} component="th" scope="row">{row.counterParty}</TableCell>
+                                                <TableCell key={2} component="th" scope="row">{row.orderType}</TableCell>
+                                                <TableCell key={3} component="th" scope="row">{row.tradeType}</TableCell>
+                                                <TableCell key={4} component="th" scope="row">{row.stockQuantity}</TableCell>
+                                                <TableCell key={5} component="th" scope="row">{row.stockName}</TableCell>
+                                                <TableCell key={6} component="th" scope="row">{row.stockPrice}</TableCell>
+                                                <TableCell key={7} component="th" scope="row">{row.tradeDate}</TableCell>
+                                                <TableCell key={8} component="th" scope="row">{row.settlementDate}</TableCell>
+                                                <TableCell key={9} component="th" scope="row">{row.tradeStatus}</TableCell>
+                                                <TableCell key={10} component="th" scope="row">{row.linearId}</TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>
@@ -880,6 +954,7 @@ class CreateTrade extends Component {
                                             <TableCell align="left">Volume</TableCell>
                                             <TableCell align="left">Stock</TableCell>
                                             <TableCell align="left">Price</TableCell>
+                                            <TableCell align="left">Trade Date</TableCell>
                                             <TableCell align="left">Expiration Date</TableCell>
                                             <TableCell align="left">Trade status</TableCell>
                                             <TableCell align="left">Trade ID</TableCell>
@@ -889,15 +964,22 @@ class CreateTrade extends Component {
 
                                     <TableBody>
                                         {this.state.trades.map((row, index) => (
-                                            <TableRow key={index}
-                                                      sx={{'&:last-child td, &:last-child th': {border: 0}}}>
-                                                {row.map((item, idx) =>
-                                                    // Display only pending trades
-                                                    (row[8] === "Pending") && (item !== "null") && (row[2] === "Market Order") &&
-                                                    (<TableCell key={idx} component="th" scope="row">{item}</TableCell>)
-                                                )}
-                                                {/* Initiating Party cannot counter trade their trade */}
-                                                {(row[8] === "Pending") && (!row[0].includes(this.getPartyfromPort())) && (row[2] === "Market Order") &&
+                                            // Display only pending trades
+                                            // Initiating Party cannot counter trade their trade
+                                            (row.tradeStatus === "Pending" && row.orderType === "Market Order") &&
+                                            <TableRow key={index} sx={{'&:last-child td, &:last-child th': {border: 0}}}>
+                                                <TableCell key={0} component="th" scope="row">{row.initiatingParty}</TableCell>
+                                                <TableCell key={1} component="th" scope="row">{row.orderType}</TableCell>
+                                                <TableCell key={2} component="th" scope="row">{row.tradeType}</TableCell>
+                                                <TableCell key={3} component="th" scope="row">{row.stockQuantity}</TableCell>
+                                                <TableCell key={4} component="th" scope="row">{row.stockName}</TableCell>
+                                                <TableCell key={5} component="th" scope="row">{row.stockPrice}</TableCell>
+                                                <TableCell key={6} component="th" scope="row">{row.tradeDate}</TableCell>
+                                                <TableCell key={7} component="th" scope="row">{row.expirationDate}</TableCell>
+                                                <TableCell key={8} component="th" scope="row">{row.tradeStatus}</TableCell>
+                                                <TableCell key={9} component="th" scope="row">{row.linearId}</TableCell>
+
+                                                {(!row.initiatingParty.includes(this.getPartyfromPort())) &&
                                                 <TableCell component="th" scope="row">
                                                     <Button
                                                         size='small'
@@ -906,10 +988,9 @@ class CreateTrade extends Component {
                                                         fullWidth
                                                         variant="contained"
                                                         color="primary"
-                                                        onClick={() => this.counterTradeButton(index, row[0])}>Accept
+                                                        onClick={() => this.counterTradeButton(index)}>Accept
                                                     </Button>
-                                                </TableCell>
-                                                }
+                                                </TableCell>}
                                             </TableRow>
                                         ))}
                                     </TableBody>
@@ -929,6 +1010,7 @@ class CreateTrade extends Component {
                                             <TableCell align="left">Volume</TableCell>
                                             <TableCell align="left">Stock</TableCell>
                                             <TableCell align="left">Price</TableCell>
+                                            <TableCell align="left">Trade Date</TableCell>
                                             <TableCell align="left">Expiration Date</TableCell>
                                             <TableCell align="left">Trade status</TableCell>
                                             <TableCell align="left">Trade ID</TableCell>
@@ -938,15 +1020,21 @@ class CreateTrade extends Component {
 
                                     <TableBody>
                                         {this.state.trades.map((row, index) => (
-                                            <TableRow key={index}
-                                                      sx={{'&:last-child td, &:last-child th': {border: 0}}}>
-                                                {row.map((item, idx) =>
-                                                    // Display only pending trades
-                                                    (row[8] === "Pending") && (item !== "null") && (row[2] === "Pending Order") &&
-                                                    (<TableCell key={idx} component="th" scope="row">{item}</TableCell>)
-                                                )}
-                                                {/* Initiating Party cannot counter trade their trade */}
-                                                {(row[8] === "Pending") && (!row[0].includes(this.getPartyfromPort())) && (row[2] === "Pending Order") &&
+                                            // Display only pending trades
+                                            // Initiating Party cannot counter trade their trade
+                                            (row.tradeStatus === "Pending" && row.orderType === "Pending Order") &&
+                                            <TableRow key={index} sx={{'&:last-child td, &:last-child th': {border: 0}}}>
+                                                <TableCell key={0} component="th" scope="row">{row.initiatingParty}</TableCell>
+                                                <TableCell key={1} component="th" scope="row">{row.orderType}</TableCell>
+                                                <TableCell key={2} component="th" scope="row">{row.tradeType}</TableCell>
+                                                <TableCell key={3} component="th" scope="row">{row.stockQuantity}</TableCell>
+                                                <TableCell key={4} component="th" scope="row">{row.stockName}</TableCell>
+                                                <TableCell key={5} component="th" scope="row">{row.stockPrice}</TableCell>
+                                                <TableCell key={8} component="th" scope="row">{row.tradeDate}</TableCell>
+                                                <TableCell key={6} component="th" scope="row">{row.expirationDate}</TableCell>
+                                                <TableCell key={7} component="th" scope="row">{row.tradeStatus}</TableCell>
+                                                <TableCell key={9} component="th" scope="row">{row.linearId}</TableCell>
+                                                {(!row.initiatingParty.includes(this.getPartyfromPort())) &&
                                                 <TableCell component="th" scope="row">
                                                     <Button
                                                         size='small'
@@ -955,21 +1043,37 @@ class CreateTrade extends Component {
                                                         fullWidth
                                                         variant="contained"
                                                         color="primary"
-                                                        onClick={() => this.counterTradeButton(index, row[0])}>Accept
+                                                        onClick={() => this.counterTradeButton(index)}>Accept
                                                     </Button>
-                                                    {/*<br/>*/}
-                                                    {/*<Button*/}
-                                                    {/*    type="submit"*/}
-                                                    {/*    fullWidth*/}
-                                                    {/*    variant="contained"*/}
-                                                    {/*    color="error"*/}
-                                                    {/*    onClick={this.cancelTradeButton}>*/}
-                                                    {/*    Reject Trade*/}
-                                                    {/*</Button>*/}
-                                                </TableCell>
-                                                }
+                                                </TableCell>}
                                             </TableRow>
                                         ))}
+
+
+                                        {/*        /!*  *!/*/}
+                                        {/*        {(row[8] === "Pending") && (!row[0].includes(this.getPartyfromPort())) && (row[2] === "Pending Order") &&*/}
+                                        {/*        <TableCell component="th" scope="row">*/}
+                                        {/*            <Button*/}
+                                        {/*                size='small'*/}
+                                        {/*                style={{marginBottom: 5}}*/}
+                                        {/*                type="submit"*/}
+                                        {/*                fullWidth*/}
+                                        {/*                variant="contained"*/}
+                                        {/*                color="primary"*/}
+                                        {/*                onClick={() => this.counterTradeButton(index, row[0])}>Accept*/}
+                                        {/*            </Button>*/}
+                                        {/*            /!*<br/>*!/*/}
+                                        {/*            /!*<Button*!/*/}
+                                        {/*            /!*    type="submit"*!/*/}
+                                        {/*            /!*    fullWidth*!/*/}
+                                        {/*            /!*    variant="contained"*!/*/}
+                                        {/*            /!*    color="error"*!/*/}
+                                        {/*            /!*    onClick={this.cancelTradeButton}>*!/*/}
+                                        {/*            /!*    Reject Trade*!/*/}
+                                        {/*            /!*</Button>*!/*/}
+                                        {/*        </TableCell>*/}
+                                        {/*        }*/}
+
                                     </TableBody>
                                 </Table>
                             </TableContainer>
@@ -983,4 +1087,9 @@ class CreateTrade extends Component {
     }
 }
 
-export default withStyles(useStyles)(CreateTrade);
+export default withStyles(useStyles)
+
+(
+    CreateTrade
+)
+;
