@@ -7,6 +7,7 @@ import net.corda.core.contracts.ContractState;
 import net.corda.core.transactions.LedgerTransaction;
 import org.jetbrains.annotations.NotNull;
 
+import java.math.BigDecimal;
 import java.security.PublicKey;
 import java.util.List;
 
@@ -94,6 +95,29 @@ public class TradeContract implements Contract {
                 return null;
             });
 
+        } else if (commandType instanceof TradeContract.Commands.OracleTrade) {
+            requireThat(require -> {
+                // Generic constraints around the Trade transaction.
+                require.using("Only one output state should be created.", outputs.size() >= 1);
+
+                //require.using("The creating party and the counter party cannot be the same entity.",  output.initiatingParty != output.counterParty);
+                // require.using("All of the participants must be signers.", command.signers.containsAll(output.participants.map { it.owningKey }));
+
+                // Trade-specific constraints.
+                //  require.using("The sell quantity and the buy quantity cannot be the same entity.", output.sellQuantity != output.buyQuantity);
+                for (ContractState output : outputs) {
+
+                    require.using("The Trade's sell value must be non-negative.", ((TradeState) output).sellValue >= 0);
+                    require.using("The Trade's buy value must be non-negative.", ((TradeState) output).buyValue >= 0);
+                    require.using("The Trade's sell quantity can't be empty.", ((TradeState) output).sellQuantity >= 0);
+                    require.using("The Trade's buy quantity can't be empty.", ((TradeState) output).buyQuantity >= 0);
+
+                    require.using("InitiatingParty must sign Trade", requiredSigners.contains(((TradeState) output).getInitiatingParty().getOwningKey()));
+                    require.using("CounterParty must sign Trade", requiredSigners.contains(((TradeState) output).getCounterParty().getOwningKey()));
+
+                }
+                return null;
+            });
         } else {
             throw new IllegalArgumentException("CommandType not recognized");
         }
@@ -109,5 +133,25 @@ public class TradeContract implements Contract {
 
         class CounterTrade implements Commands {
         }
+
+        class OracleTrade implements Commands {
+            private final BigDecimal oracleValue;
+            private final BigDecimal partyValue;
+
+            public OracleTrade(BigDecimal oracleValue, BigDecimal partyValue) {
+                this.oracleValue = oracleValue;
+                this.partyValue = partyValue;
+            }
+
+            public BigDecimal getOracleValue() {
+                return oracleValue;
+            }
+
+            public BigDecimal getPartyValue() {
+                return partyValue;
+            }
+
+        }
+
     }
 }
