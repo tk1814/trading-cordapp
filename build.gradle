@@ -137,7 +137,15 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
     }
 
     def clusterAddresses = ["localhost:11000", "localhost:11010", "localhost:11020", "localhost:11030", "localhost:11040"]
-
+    nodeDefaults {
+        projectCordapp { deploy = true }
+        cordapp("$corda_release_group:corda-finance-contracts:$corda_release_version")
+        cordapp("$corda_release_group:corda-finance-workflows:$corda_release_version")
+        cordapp("$tokens_release_group:tokens-contracts:$tokens_release_version")
+        cordapp("$tokens_release_group:tokens-workflows:$tokens_release_version")
+        cordapp project(':contracts')
+        cordapp project(':workflows')
+    }
 
     node {
         name "O=Notary Service 0,L=Zurich,C=CH"
@@ -155,6 +163,7 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
                         debug: true
                 ]
         ]
+        runSchemaMigration = true
     }
     node {
         name "O=Notary Service 1,L=Zurich,C=CH"
@@ -172,6 +181,7 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
                         debug: true
                 ]
         ]
+        runSchemaMigration = true
     }
     node {
         name "O=Notary Service 2,L=Zurich,C=CH"
@@ -189,6 +199,7 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
                         debug: true
                 ]
         ]
+        runSchemaMigration = true
     }
     node {
         name "O=Notary Service 3,L=Zurich,C=CH"
@@ -206,6 +217,7 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
                         debug: true
                 ]
         ]
+        runSchemaMigration = true
     }
     node {
         name "O=Notary Service 4,L=Zurich,C=CH"
@@ -223,6 +235,8 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
                         debug: true
                 ]
         ]
+
+        runSchemaMigration = true
     }
 
 

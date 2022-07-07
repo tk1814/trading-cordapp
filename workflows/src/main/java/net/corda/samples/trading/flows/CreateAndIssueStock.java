@@ -42,7 +42,7 @@ public class CreateAndIssueStock extends FlowLogic<String> {
     @Suspendable
     public String call() throws FlowException {
 
-        final Party notary = getServiceHub().getNetworkMapCache().getNotary(CordaX500Name.parse("O=Notary,L=London,C=GB"));
+        final Party notary = getServiceHub().getNetworkMapCache().getNotaryIdentities().get(0);
 
         // Retrieving the observers
         List<Party> observers = getServiceHub().getNetworkMapCache().getAllNodes().stream()
