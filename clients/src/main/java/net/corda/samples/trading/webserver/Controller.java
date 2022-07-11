@@ -123,8 +123,6 @@ public class Controller {
 
         JsonObject resp = new JsonObject();
 
-        // TODO: add checks: unable to sell more stocks than they own, and spending more than they have
-        //  add checks in UI as well
         if (stockPrice <= 0) {
             resp.addProperty("Response", "Query parameter 'Stock Price' must be non-negative.\n");
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
@@ -202,6 +200,46 @@ public class Controller {
         }
     }
 
+    /**
+     * Initiates Cancel Trade Flow.
+     */
+    @RequestMapping(value = "/cancelTrade", method = RequestMethod.POST)
+    public ResponseEntity<String> cancelTrade(@RequestBody String payload) {
+        System.out.println(payload);
+        JsonObject convertedObject = new Gson().fromJson(payload, JsonObject.class);
+
+        String initiatingParty = convertedObject.get("initiatingParty").getAsString();
+        String orderType = convertedObject.get("orderType").getAsString();
+        String tradeType = convertedObject.get("tradeType").getAsString();
+        String stockName = convertedObject.get("stockName").getAsString();
+        double stockPrice = convertedObject.get("stockPrice").getAsDouble();
+        int stockQuantity = convertedObject.get("stockQuantity").getAsInt();
+        String expirationDate = convertedObject.get("expirationDate").getAsString();
+        String tradeStatus = convertedObject.get("tradeStatus").getAsString();
+        String tradeID = convertedObject.get("tradeID").getAsString();
+        String tradeDate = convertedObject.get("tradeDate").getAsString();
+
+        JsonObject resp = new JsonObject();
+
+        try {
+            UniqueIdentifier linearId = new UniqueIdentifier(null, UUID.fromString(tradeID));
+            TradeState cancelTradeState = new TradeState(this.proxy.wellKnownPartyFromX500Name(CordaX500Name.parse(initiatingParty)),
+                    null, orderType, tradeType, stockName, stockPrice, stockQuantity, expirationDate, tradeStatus,
+                    tradeDate, "N/A", linearId);
+
+            SignedTransaction signedTx = proxy.startTrackedFlowDynamic(CancelTradeFlow.CancelInitiator.class, cancelTradeState).getReturnValue().get();
+
+            System.out.println("signedTx.getId() =  :" + signedTx.getId());
+            resp.addProperty("Response", "Transaction id " + signedTx.getId() + " committed to ledger.\n");
+            return ResponseEntity.status(HttpStatus.ACCEPTED).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
+        } catch (Exception ex) {
+            System.out.println("Exception : " + ex.getMessage());
+            resp.addProperty("Response", ex.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
+        }
+
+    }
+
     @RequestMapping(value = "/issueStock", method = RequestMethod.POST)
     public ResponseEntity<String> issueStock(@RequestBody String payload) {
         JsonObject convertedObject = new Gson().fromJson(payload, JsonObject.class);
@@ -257,7 +295,7 @@ public class Controller {
 
         JsonObject resp = new JsonObject();
         try {
-            String result = proxy.startFlowDynamic(IssueMoney.class, "GBP", amount, proxy.wellKnownPartyFromX500Name(myLegalName)).getReturnValue().get();
+            String result = proxy.startFlowDynamic(IssueMoney.class, "USD", amount, proxy.wellKnownPartyFromX500Name(myLegalName)).getReturnValue().get();
             System.out.println(result);
 
             resp.addProperty("Response", "Success");
@@ -283,7 +321,7 @@ public class Controller {
         JsonObject resp = new JsonObject();
 
         try {
-            String fiatBalance = proxy.startFlowDynamic(QueryTokens.GetFiatBalance.class, "GBP").getReturnValue().get();
+            String fiatBalance = proxy.startFlowDynamic(QueryTokens.GetFiatBalance.class, "USD").getReturnValue().get();
             resp.addProperty("Response", "Success");
             resp.addProperty("Amount", fiatBalance);
             return ResponseEntity.status(HttpStatus.ACCEPTED).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
