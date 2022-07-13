@@ -43,7 +43,6 @@ public class TradeContract implements Contract {
         List<PublicKey> requiredSigners = command.getSigners();
         CommandData commandType = command.getValue();
 
-        // TODO: reflect these exceptions in the UI
         if (commandType instanceof TradeContract.Commands.Create) {
             requireThat(require -> {
                 require.using("Transaction must have one command", tx.getCommands().size() == 1);

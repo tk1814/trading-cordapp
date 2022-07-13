@@ -13,27 +13,25 @@ import React from "react";
 
 const TradeTables = (props) => (
 
-    <Container component="main" maxWidth="lg" style={{width: `calc(100% - 2*${props.drawerWidth}px)`}}>
+    <Container component="main" maxWidth="xl" style={{width: `calc(100% - 1.93*${props.drawerWidth}px)`}}>
         <CssBaseline/>
-        <div className={props.paper} style={{marginTop: "-22px"}}>
-            <Typography component="h1" variant="h5">Trade History</Typography>
-            <br/>
-            <TableContainer className={props.table} component={Paper}
-                            style={{maxHeight: "17rem", overflow: "auto"}}>
+        <div className={props.paper} style={{marginTop: "-35px"}}>
+            <Typography component="h1" variant="h5" style={{marginBottom: '10px'}}>Trade History</Typography>
+            <TableContainer className={props.table} component={Paper} style={{maxHeight: "17rem", overflow: "auto"}}>
                 <Table sx={{minWidth: 650}} size="small" aria-label="simple table">
                     <TableHead>
                         <TableRow>
-                            <TableCell>Initiating Party</TableCell>
-                            <TableCell>Counter Party</TableCell>
-                            <TableCell align="left">Order Type</TableCell>
-                            <TableCell align="left">Type</TableCell>
-                            <TableCell align="left">Volume</TableCell>
-                            <TableCell align="left">Stock</TableCell>
-                            <TableCell align="left">Price</TableCell>
-                            <TableCell align="left">Trade Date</TableCell>
-                            <TableCell align="left">Settlement Date</TableCell>
-                            <TableCell align="left">Trade status</TableCell>
-                            <TableCell align="left">Trade ID</TableCell>
+                            <TableCell style={{fontWeight: 'bold'}}>Initiating Party</TableCell>
+                            <TableCell style={{fontWeight: 'bold'}}>Counter Party</TableCell>
+                            <TableCell style={{fontWeight: 'bold'}} align="left">Order Type</TableCell>
+                            <TableCell style={{fontWeight: 'bold'}} align="left">Type</TableCell>
+                            <TableCell style={{fontWeight: 'bold'}} align="left">Volume</TableCell>
+                            <TableCell style={{fontWeight: 'bold'}} align="left">Stock</TableCell>
+                            <TableCell style={{fontWeight: 'bold'}} align="left">Price</TableCell>
+                            <TableCell style={{fontWeight: 'bold'}} align="left">Trade Date {props.tz}</TableCell>
+                            <TableCell style={{fontWeight: 'bold'}} align="left">Settlement Date {props.tz}</TableCell>
+                            <TableCell style={{fontWeight: 'bold'}} align="left">Trade status</TableCell>
+                            <TableCell style={{fontWeight: 'bold'}} align="left">Trade ID</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
@@ -63,26 +61,25 @@ const TradeTables = (props) => (
                     </TableBody>
                 </Table>
             </TableContainer>
-            <br/><br/>
-            {/*  ----------- MARKET ORDERS TABLE ------------*/}
-            <Typography component="h1" variant="h5">Market Orders</Typography> <br/>
-            <TableContainer className={props.table} component={Paper}
-                            style={{maxHeight: "14rem", overflow: "auto"}}>
 
+            {/*  ----------- MARKET ORDERS TABLE ------------*/}
+            <Typography component="h1" variant="h5" style={{marginTop: '20px', marginBottom: '10px'}}>Market
+                Orders</Typography>
+            <TableContainer className={props.table} component={Paper} style={{maxHeight: "14rem", overflow: "auto"}}>
                 <Table sx={{minWidth: 650}} size="small" aria-label="simple table">
                     <TableHead>
                         <TableRow>
-                            <TableCell>Initiating Party</TableCell>
-                            <TableCell align="left">Order Type</TableCell>
-                            <TableCell align="left">Type</TableCell>
-                            <TableCell align="left">Volume</TableCell>
-                            <TableCell align="left">Stock</TableCell>
-                            <TableCell align="left">Price</TableCell>
-                            <TableCell align="left">Trade Date</TableCell>
-                            <TableCell align="left">Expiration Date</TableCell>
-                            <TableCell align="left">Trade status</TableCell>
-                            <TableCell align="left">Trade ID</TableCell>
-                            <TableCell align="left"></TableCell>
+                            <TableCell style={{fontWeight: 'bold'}}>Initiating Party</TableCell>
+                            <TableCell style={{fontWeight: 'bold'}} align="left">Order Type</TableCell>
+                            <TableCell style={{fontWeight: 'bold'}} align="left">Type</TableCell>
+                            <TableCell style={{fontWeight: 'bold'}} align="left">Volume</TableCell>
+                            <TableCell style={{fontWeight: 'bold'}} align="left">Stock</TableCell>
+                            <TableCell style={{fontWeight: 'bold'}} align="left">Price</TableCell>
+                            <TableCell style={{fontWeight: 'bold'}} align="left">Trade Date {props.tz}</TableCell>
+                            <TableCell style={{fontWeight: 'bold'}} align="left">Expiration Date {props.tz}</TableCell>
+                            <TableCell style={{fontWeight: 'bold'}} align="left">Trade status</TableCell>
+                            <TableCell style={{fontWeight: 'bold'}} align="left">Trade ID</TableCell>
+                            <TableCell style={{fontWeight: 'bold'}} align="left"></TableCell>
                         </TableRow>
                     </TableHead>
 
@@ -104,36 +101,34 @@ const TradeTables = (props) => (
                                 <TableCell key={9} component="th" scope="row">{row.linearId}</TableCell>
                                 {(!row.initiatingParty.includes(props.getPartyfromPort())) &&
                                 <TableCell component="th" scope="row">
-                                    <Button
-                                        size='small' style={{marginBottom: 5}} type="submit"
-                                        fullWidth variant="contained" color="primary"
-                                        onClick={() => props.counterTradeButton(index)}>Accept
-                                    </Button>
+                                    <Button size='small' style={{marginBottom: 5}} type="submit"
+                                            fullWidth variant="contained" color="primary"
+                                            onClick={() => props.counterTradeButton(index)}>Accept </Button>
                                 </TableCell>}
                             </TableRow>
                         ))}
                     </TableBody>
                 </Table>
             </TableContainer>
-            <br/><br/>
+
             {/*  ----------- PENDING ORDERS TABLE ------------*/}
-            <Typography component="h1" variant="h5">Pending Orders</Typography><br/>
-            <TableContainer className={props.table} component={Paper}
-                            style={{maxHeight: "17rem", overflow: "auto"}}>
+            <Typography component="h1" variant="h5" style={{marginTop: '20px', marginBottom: '10px'}}>Pending
+                Orders</Typography>
+            <TableContainer className={props.table} component={Paper} style={{maxHeight: "17rem", overflow: "auto"}}>
                 <Table sx={{minWidth: 650}} size="small" aria-label="simple table">
                     <TableHead>
                         <TableRow>
-                            <TableCell>Initiating Party</TableCell>
-                            <TableCell align="left">Order Type</TableCell>
-                            <TableCell align="left">Type</TableCell>
-                            <TableCell align="left">Volume</TableCell>
-                            <TableCell align="left">Stock</TableCell>
-                            <TableCell align="left">Price</TableCell>
-                            <TableCell align="left">Trade Date</TableCell>
-                            <TableCell align="left">Expiration Date</TableCell>
-                            <TableCell align="left">Trade status</TableCell>
-                            <TableCell align="left">Trade ID</TableCell>
-                            <TableCell align="left"></TableCell>
+                            <TableCell style={{fontWeight: 'bold'}}>Initiating Party</TableCell>
+                            <TableCell style={{fontWeight: 'bold'}} align="left">Order Type</TableCell>
+                            <TableCell style={{fontWeight: 'bold'}} align="left">Type</TableCell>
+                            <TableCell style={{fontWeight: 'bold'}} align="left">Volume</TableCell>
+                            <TableCell style={{fontWeight: 'bold'}} align="left">Stock</TableCell>
+                            <TableCell style={{fontWeight: 'bold'}} align="left">Price</TableCell>
+                            <TableCell style={{fontWeight: 'bold'}} align="left">Trade Date {props.tz}</TableCell>
+                            <TableCell style={{fontWeight: 'bold'}} align="left">Expiration Date {props.tz}</TableCell>
+                            <TableCell style={{fontWeight: 'bold'}} align="left">Trade status</TableCell>
+                            <TableCell style={{fontWeight: 'bold'}} align="left">Trade ID</TableCell>
+                            <TableCell style={{fontWeight: 'bold'}} align="left"></TableCell>
                         </TableRow>
                     </TableHead>
 
@@ -171,7 +166,6 @@ const TradeTables = (props) => (
                     </TableBody>
                 </Table>
             </TableContainer>
-            <br/><br/>
         </div>
     </Container>
 

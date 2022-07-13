@@ -21,16 +21,17 @@ import IssueStocks from "../IssueStocks";
 import IssueMoney from "../IssueMoney";
 import TradesTables from "../TradesTables";
 
-const URL = 'http://localhost:';
+/* Timezone settings */
+const timezone = '(UTC)';
+const location = 'Etc/UTC';
+
 const drawerWidth = 300;
+const URL = 'http://localhost:';
 const headers = {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'};
 
 const useStyles = (theme) => ({
     paper: {
         marginTop: theme.spacing(7), display: 'flex', flexDirection: 'column', alignItems: 'center',
-    },
-    avatar: {
-        margin: theme.spacing(1), backgroundColor: theme.palette.secondary.main,
     },
     form: {
         marginTop: theme.spacing(3), width: '100%', // Fix IE 11 issue.
@@ -43,7 +44,6 @@ class CreateTrade extends Component {
         super(props);
         this.state = {
             orderType: "pendingOrder",
-            value: "1",
             trades: [],
             nodes: [],
             peers: [],
@@ -62,7 +62,6 @@ class CreateTrade extends Component {
             bidPrice: "--",
             askPrice: "--",
             intervalId: null,
-            expirationDate: new Date().toISOString().slice(0, 16),
             stockCodes: ["AAPL", "AMZN", "TSLA", "NFLX", "META", "GOOG", "TWTR"],
         }
     }
@@ -90,17 +89,20 @@ class CreateTrade extends Component {
     }
 
     async componentDidMount() {
-
         // Initialise to PartyA port
         if (localStorage.getItem('port') === null) {
             localStorage.setItem('port', '10056');
         }
-        this.getAllNodes(); // call once when webpage mounts
+        this.getAllNodes();
         this.getPeers();
         this.getBalance();
         this.getStockQuantity();
         this.getCounterParty();
         this.getTrades();
+
+        let formattedDate = await this.getDateTime(false);
+        this.setState({expirationDate: formattedDate})
+        this.setState({minFormattedDate: formattedDate})
     }
 
     issueStock = (e) => {
@@ -269,11 +271,10 @@ class CreateTrade extends Component {
                 committedStockBalance += parseInt(trade.stockQuantity);
             }
         });
-        console.log(committedMoneyBalance, committedStockBalance)
 
         // get current stock balance
         let stockBalanceAndName = this.state.stockBalanceList.find((stockSymbol) => stockSymbol.includes(stockToTrade));
-        console.log(this.state.stockBalanceList, stockBalanceAndName)
+
         let stockBalance = parseInt(stockBalanceAndName.trim().split(" ")[0]);
         let moneyBalance = parseFloat(this.state.balance.trim().split(" ")[0]);
 
@@ -288,7 +289,7 @@ class CreateTrade extends Component {
 
             // must have enough money balance to buy stocks
             let cost = parseFloat((parseFloat(stockPrice) * parseFloat(stockQuantity)).toFixed(2))
-            console.log(cost, (moneyBalance - committedMoneyBalance))
+
             if (moneyBalance === 0.0) {
                 window.alert("You have 0 balance. You cannot buy stocks.")
                 return false;
@@ -303,7 +304,7 @@ class CreateTrade extends Component {
         return true;
     }
 
-    createTradeOrder = (e, marketOrderType) => {
+    createTradeOrder = async (e, marketOrderType) => {
         e.preventDefault();
 
         if (this.state.stockQuantity === 0 || this.state.stockQuantity < 0) {
@@ -313,10 +314,9 @@ class CreateTrade extends Component {
             let isEnough, data = null;
             if (marketOrderType === null) { // PENDING ORDER
 
-                let currentDateTime = new Date();
+                let currentDateTimeString = await this.getDateTime(true);
+                let currentDateTime = new Date(currentDateTimeString)
                 let selectedDateTime = new Date(this.state.expirationDate);
-
-                console.log(currentDateTime, selectedDateTime)
 
                 // don't allow previous expiration dates, if today's date is chosen as expiration date: don't allow previous times
                 if (this.state.stockPrice === 0 || this.state.stockPrice < 0) {
@@ -329,12 +329,11 @@ class CreateTrade extends Component {
                     window.alert("Invalid expiration month.")
                 } else if (selectedDateTime.getFullYear() < currentDateTime.getFullYear()) {
                     window.alert("Invalid expiration year.")
-                } else if (currentDateTime.toISOString().slice(0, 10) === this.state.expirationDate.slice(0, 10) && selectedDateTime.getTime() < (currentDateTime.getTime() + (5 * 60000))) {
-                    window.alert("Invalid expiration time. It should be at least 5 minutes after the current time.")
+                } else if (currentDateTimeString.slice(0, 10) === this.state.expirationDate.slice(0, 10) && selectedDateTime.getTime() < (currentDateTime.getTime() + (4 * 60000))) {
+                    window.alert("Invalid expiration time. Expiration interval should be at least 5 minutes.")
                 } else {
                     let tradeType = (this.state.alignment === "sell") ? "Sell" : "Buy";
                     isEnough = this.checkEnoughBalance(tradeType, this.state.stockQuantity, this.state.stockToTrade, this.state.stockPrice, true);
-
                     if (isEnough) {
                         data = {
                             counterParty: this.state.counterParty,
@@ -344,7 +343,7 @@ class CreateTrade extends Component {
                             stockPrice: parseFloat(this.state.stockPrice).toFixed(2),
                             stockQuantity: this.state.stockQuantity,
                             expirationDate: this.state.expirationDate,
-                            tradeDate: currentDateTime.toISOString(),
+                            tradeDate: currentDateTimeString,
                         }
                     }
                 }
@@ -358,7 +357,10 @@ class CreateTrade extends Component {
                     isEnough = this.checkEnoughBalance(tradeType, this.state.stockQuantity, this.state.stockToTrade, stockPrice, true);
 
                     if (isEnough) {
-                        let currentDateTime = new Date();
+                        let currentDateTimeString = await this.getDateTime(true);
+                        let currentDateTime = new Date(currentDateTimeString + 'Z'); // add Z to give UTC time string
+                        let newTime = currentDateTime.getTime() + 2 * 60000;
+
                         data = {
                             counterParty: this.state.counterParty,
                             orderType: "Market Order",
@@ -366,13 +368,12 @@ class CreateTrade extends Component {
                             stockName: this.state.stockToTrade,
                             stockPrice: stockPrice,
                             stockQuantity: this.state.stockQuantity,
-                            expirationDate: new Date(currentDateTime.getTime() + 2 * 60000).toISOString().slice(0, 16), // sets 2 minutes expiration date
-                            tradeDate: currentDateTime.toISOString()
+                            expirationDate: new Date(newTime).toISOString().slice(0, 16), // sets 2 minutes expiration date
+                            tradeDate: currentDateTimeString
                         }
                     }
                 }
             }
-
             if (data !== null && isEnough) {
                 console.log(data);
                 let PORT = localStorage.getItem('port');
@@ -394,7 +395,7 @@ class CreateTrade extends Component {
         }
     };
 
-    counterTradeButton = (index) => {
+    counterTradeButton = async (index) => {
         let partyTrades = this.state.trades;
 
         const data = {
@@ -408,7 +409,7 @@ class CreateTrade extends Component {
             expirationDate: partyTrades[index].expirationDate,
             tradeStatus: "Accepted",
             tradeDate: partyTrades[index].tradeDate,
-            settlementDate: new Date().toISOString(),
+            settlementDate: await this.getDateTime(true),
             tradeID: partyTrades[index].linearId,
         }
         console.log(data)
@@ -462,6 +463,22 @@ class CreateTrade extends Component {
         })
     }
 
+    async getDateTime(withMilliseconds) {
+        let formattedDate;
+        const result = await fetch("http://worldtimeapi.org/api/timezone/" + location)
+            .then(response => response.json())
+            .then(data => {
+                let datetime = data.datetime;
+                if (withMilliseconds) {
+                    formattedDate = datetime.slice(0, 23)
+                } else {
+                    formattedDate = datetime.slice(0, 16)
+                }
+                return formattedDate
+            })
+        return await result
+    }
+
     orderTypeChange = (e) => {
         let orderType = e.target.value;
         this.setState({orderType});
@@ -511,7 +528,7 @@ class CreateTrade extends Component {
             params: {region: 'GB', lang: 'en', symbols: stockToTrade},
             headers: {
                 'Content-Type': 'application/json',
-                'x-api-key': 'encUAKVvv05WU9PeClhZc8E69BvSwO4P7HHAFzX5'
+                'x-api-key': 'LYYwjsR35b8BKuiqo22i986RSxSG7tEc8LDFY44A'
             }
         };
 
@@ -519,9 +536,7 @@ class CreateTrade extends Component {
             if (response !== null) {
                 let bidPrice = response.data.quoteResponse.result[0].bid;
                 let askPrice = response.data.quoteResponse.result[0].ask;
-                console.log(bidPrice, askPrice);
                 if (bidPrice !== 0 && askPrice !== 0) {
-                    console.log(bidPrice, askPrice);
                     this.setState({bidPrice});
                     this.setState({askPrice});
                 } else {
@@ -544,23 +559,19 @@ class CreateTrade extends Component {
                 <CssBaseline/>
                 <div className={classes.paper}>
                     <Container component="main" maxWidth="sm">
-
                         <Box sx={{display: 'flex'}}> <CssBaseline/>
                             <AppBar position="fixed" sx={{
                                 width: `calc(100% - ${drawerWidth}px)`,
                                 ml: `${drawerWidth}px`
                             }}> </AppBar>
                             <Drawer sx={{
-                                width: drawerWidth, flexShrink: 0, '& .MuiDrawer-paper': {
-                                    width: drawerWidth, boxSizing: 'border-box',
-                                },
+                                width: drawerWidth,
+                                flexShrink: 0, '& .MuiDrawer-paper': {width: drawerWidth, boxSizing: 'border-box',},
                             }} variant="permanent" anchor="left">
-                                <Toolbar>
-                                    <img src={corda_img} style={{
-                                        width: "80px",
-                                        marginLeft: "30%"
-                                    }} alt="corda logo"/>
-                                </Toolbar>
+                                <Toolbar> <img src={corda_img} style={{
+                                    width: "80px",
+                                    marginLeft: "30%"
+                                }} alt="corda logo"/> </Toolbar>
                                 <Divider/>
                                 <br/>
 
@@ -575,9 +586,7 @@ class CreateTrade extends Component {
                                                 <MenuItem key={key} value={node}>{node}</MenuItem>))}
                                         </Select>
                                     </Grid>
-                                </FormControl>
-                                <br/>
-                                <Divider/>
+                                </FormControl> <br/> <Divider/>
 
                                 {/* ------------------ ORDERS ------------------------*/}
                                 <Grid container spacing={2}>
@@ -614,7 +623,6 @@ class CreateTrade extends Component {
                                 {(this.state.orderType === "pendingOrder") &&
 
                                 <form className={classes.form} style={{marginLeft: "20px"}} id="createTradeForm" noValidate>
-
                                     <ToggleButtonGroup size="small" color="primary" value={this.state.alignment} exclusive onChange={this.toggleHandleChange}>
                                         <ToggleButton value="sell">Sell</ToggleButton>
                                         <ToggleButton value="buy">Buy </ToggleButton>
@@ -634,7 +642,7 @@ class CreateTrade extends Component {
                                         <Grid item xs={10}>
                                             <TextField
                                                 size="small" autoComplete="fname" name="stockPrice" variant="outlined"
-                                                required fullWidth id="stockPrice" label="Stock Price (USD)" type="number"
+                                                required fullWidth id="stockPrice" label="Stock Price" type="number"
                                                 InputProps={{
                                                     startAdornment: (
                                                         <InputAdornment position="start">$</InputAdornment>)
@@ -643,23 +651,21 @@ class CreateTrade extends Component {
                                                 error={this.state.stockPrice === ""}
                                                 helperText={this.state.stockPrice === "" ? 'Empty field!' : ' '}/>
                                         </Grid>
+                                        {(this.state.minFormattedDate) &&
                                         <Grid item xs={10}>
                                             <TextField
-                                                fullWidth
-                                                value={this.state.expirationDate}
-                                                id="expirationDate" label="Expiration Date"
-                                                inputProps={{min: new Date().toISOString().slice(0, 16),}}
-                                                InputLabelProps={{shrink: true}}
+                                                fullWidth id="expirationDate" label={"Expiration Date " + timezone}
+                                                inputProps={{
+                                                    defaultValue: this.state.expirationDate,
+                                                    min: this.state.minFormattedDate
+                                                }} InputLabelProps={{shrink: true}}
                                                 type="datetime-local" onChange={this.expirationDateChange}/>
-                                        </Grid>
+                                        </Grid>}
                                         <br/><br/><br/>
-
                                         <Grid item xs={10}>
                                             <Button
                                                 size="small" type="submit" fullWidth variant="contained" color="primary"
-                                                onClick={(e) => this.createTradeOrder(e, null)}>
-                                                Place Order
-                                            </Button>
+                                                onClick={(e) => this.createTradeOrder(e, null)}>Place Order</Button>
                                         </Grid>
                                     </Grid>
                                 </form>}
@@ -712,10 +718,7 @@ class CreateTrade extends Component {
                                 <IssueMoney
                                     forms={classes.form} moneyAmountToIssueChange={this.moneyAmountToIssueChange}
                                     moneyAmountToIssue={this.state.moneyAmountToIssue}
-                                    issueMoney={this.issueMoney}/>
-
-                                <br/>
-                                <Divider/>
+                                    issueMoney={this.issueMoney}/> <br/> <Divider/>
 
                                 {/* -------------- ISSUE STOCKS -------------- */}
                                 <IssueStocks
@@ -723,9 +726,7 @@ class CreateTrade extends Component {
                                     stockNameToIssueChange={this.stockNameToIssueChange}
                                     stockAmountToIssueChange={this.stockAmountToIssueChange}
                                     stockAmountToIssue={this.state.stockAmountToIssue}
-                                    issueStock={this.issueStock}/>
-
-                                <br/>
+                                    issueStock={this.issueStock}/> <br/>
                             </Drawer>
                         </Box>
                     </Container>
@@ -733,8 +734,7 @@ class CreateTrade extends Component {
 
                     {/* ------------- Balance & Stocks ------------- */}
                     <Container component="main" maxWidth="sm">
-                        <Box sx={{display: 'flex'}}>
-                            <CssBaseline/>
+                        <Box sx={{display: 'flex'}}> <CssBaseline/>
                             <AppBar position="fixed"
                                     sx={{width: `calc(100% - ${drawerWidth}px)`, ml: `${drawerWidth}px`}}> </AppBar>
                             <Drawer sx={{
@@ -770,8 +770,7 @@ class CreateTrade extends Component {
                         cancelTradeButton={this.cancelTradeButton}
                         drawerWidth={drawerWidth}
                         counterTradeButton={this.counterTradeButton}
-                    />
-                    <br/><br/>
+                        tz={timezone}/> <br/>
                 </div>
             </div>
         );

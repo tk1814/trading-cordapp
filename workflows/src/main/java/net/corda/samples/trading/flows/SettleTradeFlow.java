@@ -26,7 +26,6 @@ public class SettleTradeFlow extends FlowLogic<SignedTransaction> {
     @Override
     @Suspendable
     public SignedTransaction call() throws FlowException {
-        // TODO: if a subflow fails then revert all
         if (counterTradeState.getTradeType().equals("Sell")) // called by seller/initiatingParty
             seller = counterTradeState.getCounterParty();
         else if (counterTradeState.getTradeType().equals("Buy"))

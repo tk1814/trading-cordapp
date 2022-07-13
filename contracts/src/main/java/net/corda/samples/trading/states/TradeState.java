@@ -29,7 +29,6 @@ public class TradeState implements ContractState, LinearState {
     public String tradeDate;
     public String settlementDate;
     private UniqueIdentifier linearId;
-    // TODO: add timestamps
 
     public TradeState(Party initiatingParty, @Nullable Party counterParty, String orderType, String tradeType, String stockName,
                       double stockPrice, int stockQuantity, String expirationDate, String tradeStatus, String tradeDate, String settlementDate,

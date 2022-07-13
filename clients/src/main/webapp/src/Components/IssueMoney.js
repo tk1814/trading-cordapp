@@ -10,7 +10,7 @@ const IssueMoney = (props) => (
         <Grid item xs={10}>
             <TextField
                 required size="small" name="moneyAmountToIssue" variant="outlined" type="number"
-                fullWidth id="moneyAmountToIssue" label="Amount (USD)" placeholder=""
+                fullWidth id="moneyAmountToIssue" label="Amount" placeholder=""
                 InputProps={{
                     startAdornment: (
                         <InputAdornment position="start">$</InputAdornment>)
