@@ -30,6 +30,7 @@ buildscript { //properties that you need to build the project
     }
 
     repositories {
+
         mavenLocal()
         mavenCentral()
         maven { url 'https://jitpack.io' }
@@ -56,12 +57,18 @@ allprojects {//Properties that you need to compile your project (The application
     apply plugin: 'java'
 
     repositories {
+
+
         mavenLocal()
 
         mavenCentral()
         maven { url 'https://jitpack.io' }
         maven { url 'https://software.r3.com/artifactory/corda' }
         maven { url 'https://software.r3.com/artifactory/corda-lib' }
+        maven { url "https://software.r3.com/artifactory/corda" }
+
+        // Corda dependencies for the patched Quasar version
+        maven { url "https://software.r3.com/artifactory/corda-dependencies" }
     }
 
     tasks.withType(JavaCompile) {
@@ -103,6 +110,12 @@ dependencies {
     cordaCompile "$corda_core_release_group:corda-core:$corda_core_release_version"
     cordaCompile "$corda_release_group:corda-node-api:$corda_release_version"
     cordaRuntime "$corda_release_group:corda:$corda_release_version"
+    cordaCompile ("$corda_release_group:corda-node:$corda_release_version") {
+        exclude group: 'com.github', module: 'bft-smart'
+    }// added
+
+
+    compile fileTree (dir:'libs', include:['*.jar'])
 
     // CorDapp dependencies.
     cordapp project(":workflows")
@@ -115,11 +128,20 @@ dependencies {
     cordaCompile "$corda_release_group:corda-finance-contracts:$corda_release_version"
     cordaCompile "$corda_release_group:corda-finance-workflows:$corda_release_version"
 
+
+    // Any sampler needs to depend on Corda RPC to invoke flows - the RPC client is used to actually drive the node
+
+
+
     // Token SDK dependencies.
+    cordapp "$tokens_release_group:tokens-money:1.1"
     cordapp "$tokens_release_group:tokens-contracts:$tokens_release_version"
     cordapp "$tokens_release_group:tokens-workflows:$tokens_release_version"
     cordapp("$corda_release_group:corda-finance-contracts:$corda_release_version")
     cordapp("$corda_release_group:corda-finance-workflows:$corda_release_version")
+
+
+
 }
 
 //Task to deploy the nodes in order to bootstrap a network
@@ -139,6 +161,7 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
     def clusterAddresses = ["localhost:11000", "localhost:11010", "localhost:11020", "localhost:11030", "localhost:11040"]
     nodeDefaults {
         projectCordapp { deploy = true }
+        cordapp "$tokens_release_group:tokens-money:1.1"
         cordapp("$corda_release_group:corda-finance-contracts:$corda_release_version")
         cordapp("$corda_release_group:corda-finance-workflows:$corda_release_version")
         cordapp("$tokens_release_group:tokens-contracts:$tokens_release_version")
@@ -157,87 +180,90 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
         notary = [
                 validating: false,
                 serviceLegalName: "O=BFT,L=Zurich,C=CH",
-                bftSMaRt: [
-                        replicaId: 0,
-                        clusterAddresses: clusterAddresses,
-                        debug: true
+                className:"net.corda.samples.trading.notaries.BFTNotary",
+                extraConfig: [
+                       bft: [
+                               replicaId: 0,
+                                clusterAddresses: clusterAddresses,
+                                debug: true
+                       ]
                 ]
         ]
-        runSchemaMigration = true
+        runSchemaMigration = false
     }
-    node {
-        name "O=Notary Service 1,L=Zurich,C=CH"
-        p2pPort 10013
-        rpcSettings {
-            address "localhost:10014"
-            adminAddress "localhost:10114"
-        }
-        notary = [
-                validating: false,
-                serviceLegalName: "O=BFT,L=Zurich,C=CH",
-                bftSMaRt: [
-                        replicaId: 1,
-                        clusterAddresses: clusterAddresses,
-                        debug: true
-                ]
-        ]
-        runSchemaMigration = true
-    }
-    node {
-        name "O=Notary Service 2,L=Zurich,C=CH"
-        p2pPort 10017
-        rpcSettings {
-            address "localhost:10018"
-            adminAddress "localhost:10118"
-        }
-        notary = [
-                validating: false,
-                serviceLegalName: "O=BFT,L=Zurich,C=CH",
-                bftSMaRt: [
-                        replicaId: 2,
-                        clusterAddresses: clusterAddresses,
-                        debug: true
-                ]
-        ]
-        runSchemaMigration = true
-    }
-    node {
-        name "O=Notary Service 3,L=Zurich,C=CH"
-        p2pPort 10021
-        rpcSettings {
-            address "localhost:10022"
-            adminAddress "localhost:10122"
-        }
-        notary = [
-                validating: false,
-                serviceLegalName: "O=BFT,L=Zurich,C=CH",
-                bftSMaRt: [
-                        replicaId: 3,
-                        clusterAddresses: clusterAddresses,
-                        debug: true
-                ]
-        ]
-        runSchemaMigration = true
-    }
-    node {
-        name "O=Notary Service 4,L=Zurich,C=CH"
-        p2pPort 10221
-        rpcSettings {
-            address "localhost:10222"
-            adminAddress "localhost:10223"
-        }
-        notary = [
-                validating: false,
-                serviceLegalName: "O=BFT,L=Zurich,C=CH",
-                bftSMaRt: [
-                        replicaId: 4,
-                        clusterAddresses: clusterAddresses,
-                        debug: true
-                ]
-        ]
-
-        runSchemaMigration = true
-    }
+//    node {
+//        name "O=Notary Service 1,L=Zurich,C=CH"
+//        p2pPort 10013
+//        rpcSettings {
+//            address "localhost:10014"
+//            adminAddress "localhost:10114"
+//        }
+//        notary = [
+//                validating: false,
+//                serviceLegalName: "O=BFT,L=Zurich,C=CH",
+//                bftSMaRt: [
+//                        replicaId: 1,
+//                        clusterAddresses: clusterAddresses,
+//                        debug: true
+//                ]
+//        ]
+//        runSchemaMigration = true
+//    }
+//    node {
+//        name "O=Notary Service 2,L=Zurich,C=CH"
+//        p2pPort 10017
+//        rpcSettings {
+//            address "localhost:10018"
+//            adminAddress "localhost:10118"
+//        }
+//        notary = [
+//                validating: false,
+//                serviceLegalName: "O=BFT,L=Zurich,C=CH",
+//                bftSMaRt: [
+//                        replicaId: 2,
+//                        clusterAddresses: clusterAddresses,
+//                        debug: true
+//                ]
+//        ]
+//        runSchemaMigration = true
+//    }
+//    node {
+//        name "O=Notary Service 3,L=Zurich,C=CH"
+//        p2pPort 10021
+//        rpcSettings {
+//            address "localhost:10022"
+//            adminAddress "localhost:10122"
+//        }
+//        notary = [
+//                validating: false,
+//                serviceLegalName: "O=BFT,L=Zurich,C=CH",
+//                bftSMaRt: [
+//                        replicaId: 3,
+//                        clusterAddresses: clusterAddresses,
+//                        debug: true
+//                ]
+//        ]
+//        runSchemaMigration = true
+//    }
+//    node {
+//        name "O=Notary Service 4,L=Zurich,C=CH"
+//        p2pPort 10221
+//        rpcSettings {
+//            address "localhost:10222"
+//            adminAddress "localhost:10223"
+//        }
+//        notary = [
+//                validating: false,
+//                serviceLegalName: "O=BFT,L=Zurich,C=CH",
+//                bftSMaRt: [
+//                        replicaId: 4,
+//                        clusterAddresses: clusterAddresses,
+//                        debug: true
+//                ]
+//        ]
+//
+//        runSchemaMigration = true
+//    }
 
 
     node {
