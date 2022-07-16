@@ -78,8 +78,20 @@ public class TradeState implements ContractState, LinearState {
         return stockQuantity;
     }
 
+    public String getExpirationDate() {
+        return expirationDate;
+    }
+
     public String getTradeStatus() {
         return tradeStatus;
+    }
+
+    public String getTradeDate() {
+        return tradeDate;
+    }
+
+    public String getSettlementDate() {
+        return settlementDate;
     }
 
     public UniqueIdentifier getTradeId() {

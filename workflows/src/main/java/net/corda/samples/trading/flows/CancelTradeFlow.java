@@ -14,6 +14,7 @@ import net.corda.samples.trading.states.TradeState;
 import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class CancelTradeFlow {
@@ -35,13 +36,22 @@ public class CancelTradeFlow {
 
             // Generate a transaction by taking the current state
             List<StateAndRef<TradeState>> inputTradeStateList = getServiceHub().getVaultService().queryBy(TradeState.class).getStates().stream()
-                    .filter(x -> !x.getState().getData().getInitiatingParty().equals(this.cancelTradeState.getCounterParty()))
+                    .filter(x -> x.getState().getData().getInitiatingParty().equals(getOurIdentity()))
                     .filter(x -> x.getState().getData().getTradeStatus().equalsIgnoreCase("Pending"))
-                    .filter(x -> x.getState().getData().getTradeId().equals(this.cancelTradeState.getTradeId()))
+                    .filter(x -> x.getState().getData().getTradeId().equals(cancelTradeState.getTradeId()))
+                    .filter(x -> Objects.equals(x.getState().getData().getCounterParty(), null))
+                    .filter(x -> x.getState().getData().getOrderType().equals(cancelTradeState.getOrderType()))
+                    .filter(x -> x.getState().getData().getTradeType().equals(cancelTradeState.getTradeType()))
+                    .filter(x -> x.getState().getData().getStockName().equals(cancelTradeState.getStockName()))
+                    .filter(x -> x.getState().getData().getStockPrice() == cancelTradeState.getStockPrice())
+                    .filter(x -> x.getState().getData().getStockQuantity() == cancelTradeState.getStockQuantity())
+                    .filter(x -> x.getState().getData().getExpirationDate().equals(cancelTradeState.getExpirationDate()))
+                    .filter(x -> x.getState().getData().getTradeDate().equals(cancelTradeState.getTradeDate()))
+                    .filter(x -> x.getState().getData().getSettlementDate() == null)
                     .collect(Collectors.toList());
 
             if (inputTradeStateList.isEmpty()) {
-                throw new RuntimeException("Trade state with trade ID: " + this.cancelTradeState.getTradeId() + " was not found in the vault.");
+                throw new RuntimeException("Trade state with trade ID: " + cancelTradeState.getTradeId() + " was not found in the vault.");
             }
             StateAndRef<TradeState> inputTradeState = inputTradeStateList.get(0);
 

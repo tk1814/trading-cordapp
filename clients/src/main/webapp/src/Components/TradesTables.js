@@ -53,7 +53,9 @@ const TradeTables = (props) => (
                                 <TableCell key={5} component="th" scope="row">{row.stockName}</TableCell>
                                 <TableCell key={6} component="th" scope="row">{row.stockPrice}</TableCell>
                                 <TableCell key={7} component="th" scope="row">{row.tradeDate}</TableCell>
-                                <TableCell key={8} component="th" scope="row">{row.settlementDate}</TableCell>
+                                {(row.settlementDate === "null") ?
+                                    <TableCell key={8} component="th" scope="row">N/A</TableCell> :
+                                    <TableCell key={8} component="th" scope="row">{row.settlementDate}</TableCell>}
                                 <TableCell key={9} component="th" scope="row">{row.tradeStatus}</TableCell>
                                 <TableCell key={10} component="th" scope="row">{row.linearId}</TableCell>
                             </TableRow>

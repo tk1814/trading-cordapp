@@ -13,7 +13,6 @@ import net.corda.core.node.NodeInfo;
 import net.corda.core.transactions.SignedTransaction;
 import net.corda.samples.trading.flows.*;
 import net.corda.samples.trading.states.TradeState;
-import org.json.simple.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -174,10 +173,13 @@ public class Controller {
         JsonObject resp = new JsonObject();
 
         if (counterParty == null) {
-            resp.addProperty("Response", "Query parameter 'Counter partyName' missing or has wrong format.\n");
+            resp.addProperty("Response", "Query parameter 'counterParty' missing or has wrong format.\n");
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
         } else if (proxy.wellKnownPartyFromX500Name(CordaX500Name.parse(counterParty)) == null) {
             resp.addProperty("Response", "Counter Party named \" + counterParty + \" cannot be found.\\n");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
+        } else if (settlementDate == null || settlementDate.isEmpty() || settlementDate.equals("null")) {
+            resp.addProperty("Response", "Query parameter 'settlementDate' missing or has wrong format.\n");
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
         } else {
             try {
@@ -225,7 +227,7 @@ public class Controller {
             UniqueIdentifier linearId = new UniqueIdentifier(null, UUID.fromString(tradeID));
             TradeState cancelTradeState = new TradeState(this.proxy.wellKnownPartyFromX500Name(CordaX500Name.parse(initiatingParty)),
                     null, orderType, tradeType, stockName, stockPrice, stockQuantity, expirationDate, tradeStatus,
-                    tradeDate, "N/A", linearId);
+                    tradeDate, null, linearId);
 
             SignedTransaction signedTx = proxy.startTrackedFlowDynamic(CancelTradeFlow.CancelInitiator.class, cancelTradeState).getReturnValue().get();
 
