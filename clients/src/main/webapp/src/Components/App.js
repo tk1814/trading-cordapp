@@ -2,7 +2,7 @@ import React from 'react';
 
 import {BrowserRouter as Router, Switch, Route} from "react-router-dom";
 import './App.css';
-import CreateTrade from '../CreateTrade/CreateTrade.js';
+import CreateTrade from './CreateTrade.js';
 
 function App(props) {
     return (

@@ -41,7 +41,7 @@ const TradeTables = (props) => (
                             // don't show expiration date
                             // display only trades that the current node initiated or accepted
                             (row.tradeStatus === "Accepted" || row.tradeStatus === "Cancelled") &&
-                            (row.initiatingParty.includes(props.getPartyfromPort()) || row.counterParty.includes(props.getPartyfromPort())) &&
+                            (row.initiatingParty === props.getPartyfromPort() || row.counterParty === props.getPartyfromPort()) &&
                             <TableRow key={index} sx={{'&:last-child td, &:last-child th': {border: 0}}}>
                                 <TableCell key={0} component="th" scope="row">{row.initiatingParty}</TableCell>
                                 {(row.counterParty === "null") ?
@@ -101,7 +101,7 @@ const TradeTables = (props) => (
                                 <TableCell key={7} component="th" scope="row">{row.expirationDate}</TableCell>
                                 <TableCell key={8} component="th" scope="row">{row.tradeStatus}</TableCell>
                                 <TableCell key={9} component="th" scope="row">{row.linearId}</TableCell>
-                                {(!row.initiatingParty.includes(props.getPartyfromPort())) &&
+                                {(row.initiatingParty !== props.getPartyfromPort()) &&
                                 <TableCell component="th" scope="row">
                                     <Button size='small' style={{marginBottom: 5}} type="submit"
                                             fullWidth variant="contained" color="primary"
@@ -151,13 +151,13 @@ const TradeTables = (props) => (
                                 <TableCell key={7} component="th" scope="row">{row.tradeStatus}</TableCell>
                                 <TableCell key={9} component="th" scope="row">{row.linearId}</TableCell>
 
-                                {(!row.initiatingParty.includes(props.getPartyfromPort())) &&
+                                {(row.initiatingParty !== props.getPartyfromPort()) &&
                                 <TableCell component="th" scope="row">
                                     <Button size='small' style={{marginBottom: 5}} type="submit"
                                             fullWidth variant="contained" color="primary"
                                             onClick={() => props.counterTradeButton(index)}>Accept</Button>
                                 </TableCell>}
-                                {(row.initiatingParty.includes(props.getPartyfromPort())) &&
+                                {(row.initiatingParty === props.getPartyfromPort()) &&
                                 <TableCell component="th" scope="row">
                                     <Button size='small' style={{marginBottom: 5}} type="submit"
                                             fullWidth variant="outlined" color="error"

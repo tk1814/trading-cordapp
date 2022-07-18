@@ -13,16 +13,12 @@ import net.corda.core.node.NodeInfo;
 import net.corda.core.transactions.SignedTransaction;
 import net.corda.samples.trading.flows.*;
 import net.corda.samples.trading.states.TradeState;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
@@ -37,60 +33,34 @@ import java.util.stream.Collectors;
 public class Controller {
     private final CordaRPCOps proxy;
     private final CordaX500Name myLegalName;
-    private final List<String> SERVICE_NAMES = ImmutableList.<String>of("Notary", "Controller");
-    private final static Logger logger = LoggerFactory.getLogger(Controller.class);
-
-    private boolean isMe(NodeInfo nodeInfo) {
-        return nodeInfo.getLegalIdentities().get(0).getName().equals(myLegalName);
-    }
+    private final List<String> SERVICE_NAMES = ImmutableList.<String>of("Notary");
 
     public Controller(NodeRPCConnection rpc) {
         this.proxy = rpc.proxy;
         this.myLegalName = proxy.nodeInfo().getLegalIdentities().get(0).getName();
     }
 
-    @RequestMapping(value = "/me", method = RequestMethod.GET, produces = "application/json")
-    @ResponseStatus(HttpStatus.OK)
-    @ResponseBody
-    public Map<String, CordaX500Name> whoami() {
-        return ImmutableMap.of("me", myLegalName);
-    }
-
     /**
      * Returns the node's name.
      */
     @RequestMapping(value = "/node", method = RequestMethod.GET)
-    private ResponseEntity<String> returnName() {
-        JsonObject resp = new JsonObject();
-        resp.addProperty("name", myLegalName.toString());
-        return ResponseEntity.status(HttpStatus.CREATED).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
-    }
-
-    @RequestMapping(value = "/nodes", method = RequestMethod.GET)
-    public Map<String, List<CordaX500Name>> getNodes() {
-
-        List<NodeInfo> nodes = proxy.networkMapSnapshot();
-        return ImmutableMap.of("nodes", nodes
-                .stream()
-                .map(node -> node.getLegalIdentities().get(0).getName())
-                .filter(name -> !SERVICE_NAMES.contains(name.getOrganisation()))
-                .collect(Collectors.toList()));
+    private ImmutableMap<String, String> returnName() {
+        return ImmutableMap.of("name", myLegalName.toString());
     }
 
     /**
      * Returns all parties registered with the [NetworkMapService]. These names can be used to look up identities
      * using the [IdentityService].
      */
-    @RequestMapping(value = "/peers", method = RequestMethod.GET)
-    public Map<String, List<CordaX500Name>> getPeers() {
-
+    @RequestMapping(value = "/nodes", method = RequestMethod.GET)
+    public ImmutableMap<String, List<String>> getNodes() {
         List<NodeInfo> nodes = proxy.networkMapSnapshot();
-        return ImmutableMap.of("peers", nodes
+        return ImmutableMap.of("nodes", nodes
                 .stream()
                 .map(node -> node.getLegalIdentities().get(0).getName())
-                .filter(name -> !name.equals(myLegalName) && !SERVICE_NAMES.contains(name.getOrganisation()))
+                .filter(name -> !SERVICE_NAMES.contains(name.getOrganisation()))
+                .map(CordaX500Name::toString)
                 .collect(Collectors.toList()));
-        //      .filter(name -> !name.getOrganisation().equals(myLegalName.getOrganisation()))
     }
 
     /**
@@ -99,8 +69,7 @@ public class Controller {
     @RequestMapping(value = "/trades", method = RequestMethod.GET)
     public List<String> getTrades() {
         List<StateAndRef<TradeState>> stateAndRefs = proxy.vaultQuery(TradeState.class).getStates();
-        List<String> tradeStates = stateAndRefs.stream().map(x -> x.getState().getData().toString()).collect(Collectors.toList());
-        return tradeStates;
+        return stateAndRefs.stream().map(x -> x.getState().getData().toString()).collect(Collectors.toList());
     }
 
     /**
@@ -272,18 +241,13 @@ public class Controller {
     }
 
     @RequestMapping(value = "/getStockList", method = RequestMethod.GET)
-    public ResponseEntity<String> getStockList() {
-        JsonObject resp = new JsonObject();
+    public ImmutableList<List<String>> getStockList() {
         try {
             List<String> amountOfStocks = proxy.startFlowDynamic(QueryTokens.GetTokenBalance.class).getReturnValue().get();
-            resp.addProperty("Response", "Success");
-            resp.addProperty("StockList", String.valueOf(amountOfStocks));
-            return ResponseEntity.status(HttpStatus.ACCEPTED).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
-
+            return ImmutableList.of(amountOfStocks);
         } catch (Exception e) {
             System.out.println("Exception : " + e.getMessage());
-            resp.addProperty("Exception : ", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
+            return ImmutableList.of();
         }
     }
 

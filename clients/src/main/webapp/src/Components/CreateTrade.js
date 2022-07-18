@@ -5,7 +5,7 @@ import Grid from '@material-ui/core/Grid';
 import {withStyles} from '@material-ui/core/styles';
 import Container from '@material-ui/core/Container';
 import axios from 'axios';
-import corda_img from '../img/corda_img.png';
+import corda_img from './img/corda_img.png';
 import {FormControl, InputAdornment, InputLabel, MenuItem, Select} from "@material-ui/core";
 import {ToggleButton, ToggleButtonGroup} from "@material-ui/lab";
 import AppBar from '@mui/material/AppBar';
@@ -17,18 +17,12 @@ import List from '@mui/material/List';
 import Divider from '@mui/material/Divider';
 import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
-import IssueStocks from "../IssueStocks";
-import IssueMoney from "../IssueMoney";
-import TradesTables from "../TradesTables";
-
-/* Timezone settings */
-const timezone = '(UTC)';
-const location = 'Etc/UTC';
+import IssueStocks from "./IssueStocks";
+import IssueMoney from "./IssueMoney";
+import TradesTables from "./TradesTables";
+import {timezone, location, URL, headers, parties} from "./CONSTANTS"
 
 const drawerWidth = 300;
-const URL = 'http://localhost:';
-const headers = {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'};
-
 const useStyles = (theme) => ({
     paper: {
         marginTop: theme.spacing(7), display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -46,7 +40,6 @@ class CreateTrade extends Component {
             orderType: "pendingOrder",
             trades: [],
             nodes: [],
-            peers: [],
             counterParty: "null",
             stockPrice: 0,
             stockQuantity: 0,
@@ -89,23 +82,32 @@ class CreateTrade extends Component {
     }
 
     async componentDidMount() {
-        // Initialise to PartyA port
+        // Initialise to first party port
         if (localStorage.getItem('port') === null) {
-            localStorage.setItem('port', '10056');
+            let first = Object.values(parties)[0]
+            localStorage.setItem('port', first);
         }
-        this.getAllNodes();
-        this.getPeers();
-        this.getBalance();
-        this.getStockQuantity();
-        this.getCounterParty();
-        this.getTrades();
+        if (await this.getAllNodes()) {
+            this.getBalance();
+            this.getStockQuantity();
+            this.getCounterParty();
+            this.getTrades();
 
-        let formattedDate = await this.getDateTime(false);
-        this.setState({expirationDate: formattedDate})
-        this.setState({minFormattedDate: formattedDate})
+            let formattedDate = await this.getDateTime(false);
+            this.setState({expirationDate: formattedDate})
+            this.setState({minFormattedDate: formattedDate})
+
+            const interval = setInterval(() => {
+                this.getBalance();
+                this.getStockQuantity();
+                this.getTrades();
+            }, 2000);
+            return () => clearInterval(interval) // clearInterval when the component is unmounted
+        }
     }
 
     issueStock = (e) => {
+        e.preventDefault()
         if (this.state.stockNames.includes(this.state.stockNameToIssue))
             window.alert("Cannot issue stock with an existing name.")
         else {
@@ -120,10 +122,8 @@ class CreateTrade extends Component {
             }).then(res => {
                 const response = res.data.Response;
                 if (response !== null) {
-                    console.log(response);
                     if (response.includes("Success")) {
-                        console.log(res.data.Name + "stocks issued: " + res.data.Amount + ".");
-                        window.location.reload();
+                        console.log(res.data.Name + " stocks issued: " + res.data.Amount + ".");
                     }
                 }
             }).catch(e => {
@@ -133,6 +133,7 @@ class CreateTrade extends Component {
     }
 
     issueMoney = (e) => {
+        e.preventDefault()
         const data = {amount: parseFloat(this.state.moneyAmountToIssue).toFixed(2)}
         let PORT = localStorage.getItem('port');
         axios.post(URL + PORT + '/issueMoney', data, {
@@ -140,10 +141,8 @@ class CreateTrade extends Component {
         }).then(res => {
             const response = res.data.Response;
             if (response !== null) {
-                console.log(response);
                 if (response.includes("Success")) {
                     console.log("Cash issued: " + res.data.Amount);
-                    window.location.reload();
                 }
             }
         }).catch(e => {
@@ -156,16 +155,19 @@ class CreateTrade extends Component {
         axios.get(URL + PORT + "/getStockList", {
             headers: headers
         }).then(res => {
-            if (res.data.Response === "Success" && res.data.StockList !== "[]") {
-                let stocks = [];
-                let stockNames = [];
+            if (res.data.length !== 0) {
+                let balances = [];
+                let names = [];
 
-                let stockList = res.data.StockList.split(",");
-                stockList.forEach(function (item, index) {
-                    stockNames[index] = item.substring(item.indexOf('=') + 1).replace("]", "").replace("[", "");
-                    stocks[index] = item.replace("=", " ").replace("]", "").replace("[", "");
+                res.data[0].forEach(function (item, index) {
+                    balances[index] = item.replace("=", " ")
+                    names[index] = item.split("=")[1]
                 });
-                this.setState({stockBalanceList: stocks});
+
+                let stockBalanceList = balances.sort((a, b) => a.split(" ")[1] > b.split(" ")[1] ? 1 : -1);
+                let stockNames = names.sort((a, b) => a > b ? 1 : -1);
+
+                this.setState({stockBalanceList});
                 this.setState({stockNames});
             }
         });
@@ -182,28 +184,15 @@ class CreateTrade extends Component {
 
     getAllNodes() {
         let PORT = localStorage.getItem('port');
-        axios.get(URL + PORT + "/nodes", {
+        let success = false;
+        return axios.get(URL + PORT + "/nodes", {
             headers: headers
         }).then(res => {
-            let nodes = [];
-            res.data.nodes.forEach(function (item, index) {
-                nodes[index] = item.x500Principal.name;
-            });
-            this.setState({nodes});
+            success = true;
+            this.setState({nodes: res.data.nodes});
+            return success;
         });
-    }
 
-    getPeers() {
-        let PORT = localStorage.getItem('port');
-        axios.get(URL + PORT + "/peers", {
-            headers: headers
-        }).then(res => {
-            let peers = [];
-            res.data.peers.forEach(function (item, index) {
-                peers[index] = item.x500Principal.name;
-            });
-            this.setState({peers});
-        });
     }
 
     getCounterParty() {
@@ -211,8 +200,7 @@ class CreateTrade extends Component {
         axios.get(URL + PORT + "/node", {
             headers: headers
         }).then(res => {
-            let counterParty = res.data.name;
-            this.setState({counterParty})
+            this.setState({counterParty: res.data.name})
         }).catch(e => {
             console.log(e);
         });
@@ -235,22 +223,15 @@ class CreateTrade extends Component {
     }
 
     getPartyfromPort() {
-        if (localStorage.getItem('port') === '10056') {
-            return 'PartyA'
-        } else if (localStorage.getItem('port') === '10057') {
-            return 'PartyB'
-        }
+        let currentPort = localStorage.getItem('port')
+        return Object.keys(parties).find(key => parties[key] === parseInt(currentPort))
     }
 
     initiatingPartyChange = (e) => {
         let node = e.target.value;
         localStorage.setItem('currentNode', node);
+        localStorage.setItem('port', parties[node]);
 
-        if (node.includes("PartyA")) {
-            localStorage.setItem('port', '10056');
-        } else if (node.includes("PartyB")) {
-            localStorage.setItem('port', '10057');
-        }
         // reloading the page triggers componentDidMount
         window.location.reload();
     }
@@ -275,7 +256,7 @@ class CreateTrade extends Component {
         // get current stock balance
         let stockBalanceAndName = this.state.stockBalanceList.find((stockSymbol) => stockSymbol.includes(stockToTrade));
 
-        let stockBalance = parseInt(stockBalanceAndName.trim().split(" ")[0]);
+        let stockBalance = parseInt(stockBalanceAndName.split(" ")[0]);
         let moneyBalance = parseFloat(this.state.balance.trim().split(" ")[0]);
 
         if ((tradeType === "Sell" && reverseOps) || (tradeType === "Buy" && !reverseOps)) {
@@ -336,7 +317,6 @@ class CreateTrade extends Component {
                     isEnough = this.checkEnoughBalance(tradeType, this.state.stockQuantity, this.state.stockToTrade, this.state.stockPrice, true);
                     if (isEnough) {
                         data = {
-                            counterParty: this.state.counterParty,
                             orderType: "Pending Order",
                             tradeType: tradeType,
                             stockName: this.state.stockToTrade,
@@ -362,7 +342,6 @@ class CreateTrade extends Component {
                         let newTime = currentDateTime.getTime() + 2 * 60000;
 
                         data = {
-                            counterParty: this.state.counterParty,
                             orderType: "Market Order",
                             tradeType: tradeType,
                             stockName: this.state.stockToTrade,
@@ -384,9 +363,6 @@ class CreateTrade extends Component {
                     if (response !== null) {
                         console.log(response);
                         this.setState({response});
-                        if (response.includes("committed to ledger")) {
-                            window.location.reload();
-                        }
                     }
                 }).catch(e => {
                     console.log(e);
@@ -412,18 +388,15 @@ class CreateTrade extends Component {
             settlementDate: await this.getDateTime(true),
             tradeID: partyTrades[index].linearId,
         }
-        console.log(data)
 
         let isEnough = this.checkEnoughBalance(data.tradeType, data.stockQuantity, data.stockName, data.stockPrice, false);
         if (isEnough) {
+            console.log(data)
+
             let PORT;
             if (data.tradeType === "Sell") {
                 // initiating party calls to move stocks from initiating party to counterparty
-                if (data.initiatingParty.includes("PartyA")) {
-                    PORT = "10056";
-                } else if (data.initiatingParty.includes("PartyB")) {
-                    PORT = "10057";
-                }
+                PORT = parties[data.initiatingParty] // get port from initiating party
             } else if (data.tradeType === "Buy") {
                 // counterparty calls to move stocks from counterparty to initiating party
                 PORT = localStorage.getItem('port');
@@ -433,7 +406,6 @@ class CreateTrade extends Component {
                 headers: headers
             }).then(res => {
                 console.log(res.data.Response);
-                window.location.reload();
             })
         }
     }
@@ -459,7 +431,6 @@ class CreateTrade extends Component {
             headers: headers
         }).then(res => {
             console.log(res.data.Response);
-            window.location.reload();
         })
     }
 
