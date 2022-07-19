@@ -16,9 +16,9 @@ const TradeTables = (props) => (
     <Container component="main" maxWidth="xl" style={{width: `calc(100% - 1.93*${props.drawerWidth}px)`}}>
         <CssBaseline/>
         <div className={props.paper} style={{marginTop: "-35px"}}>
-            <Typography component="h1" variant="h5" style={{marginBottom: '10px'}}>Trade History</Typography>
+            <Typography component="h1" variant="h5" style={{marginBottom: '5px'}}>Trade History</Typography>
             <TableContainer className={props.table} component={Paper} style={{maxHeight: "17rem", overflow: "auto"}}>
-                <Table sx={{minWidth: 650}} size="small" aria-label="simple table">
+                <Table stickyHeader sx={{minWidth: 650}} size="small" aria-label="simple table">
                     <TableHead>
                         <TableRow>
                             <TableCell style={{fontWeight: 'bold'}}>Initiating Party</TableCell>
@@ -26,7 +26,7 @@ const TradeTables = (props) => (
                             <TableCell style={{fontWeight: 'bold'}} align="left">Order Type</TableCell>
                             <TableCell style={{fontWeight: 'bold'}} align="left">Type</TableCell>
                             <TableCell style={{fontWeight: 'bold'}} align="left">Volume</TableCell>
-                            <TableCell style={{fontWeight: 'bold'}} align="left">Stock</TableCell>
+                            <TableCell style={{fontWeight: 'bold'}} align="left">Symbol</TableCell>
                             <TableCell style={{fontWeight: 'bold'}} align="left">Price</TableCell>
                             <TableCell style={{fontWeight: 'bold'}} align="left">Trade Date {props.tz}</TableCell>
                             <TableCell style={{fontWeight: 'bold'}} align="left">Settlement Date {props.tz}</TableCell>
@@ -40,7 +40,7 @@ const TradeTables = (props) => (
                             // Display only accepted trades
                             // don't show expiration date
                             // display only trades that the current node initiated or accepted
-                            (row.tradeStatus === "Accepted" || row.tradeStatus === "Cancelled") &&
+                            (row.tradeStatus === "Accepted" || row.tradeStatus === "Cancelled" || row.tradeStatus === "Expired") &&
                             (row.initiatingParty === props.getPartyfromPort() || row.counterParty === props.getPartyfromPort()) &&
                             <TableRow key={index} sx={{'&:last-child td, &:last-child th': {border: 0}}}>
                                 <TableCell key={0} component="th" scope="row">{row.initiatingParty}</TableCell>
@@ -65,17 +65,18 @@ const TradeTables = (props) => (
             </TableContainer>
 
             {/*  ----------- MARKET ORDERS TABLE ------------*/}
-            <Typography component="h1" variant="h5" style={{marginTop: '20px', marginBottom: '10px'}}>Market
+            <br/>
+            <Typography component="h1" variant="h5" style={{marginBottom: '5px'}}>Market
                 Orders</Typography>
             <TableContainer className={props.table} component={Paper} style={{maxHeight: "14rem", overflow: "auto"}}>
-                <Table sx={{minWidth: 650}} size="small" aria-label="simple table">
+                <Table stickyHeader sx={{minWidth: 650}} size="small" aria-label="simple table">
                     <TableHead>
                         <TableRow>
                             <TableCell style={{fontWeight: 'bold'}}>Initiating Party</TableCell>
                             <TableCell style={{fontWeight: 'bold'}} align="left">Order Type</TableCell>
                             <TableCell style={{fontWeight: 'bold'}} align="left">Type</TableCell>
                             <TableCell style={{fontWeight: 'bold'}} align="left">Volume</TableCell>
-                            <TableCell style={{fontWeight: 'bold'}} align="left">Stock</TableCell>
+                            <TableCell style={{fontWeight: 'bold'}} align="left">Symbol</TableCell>
                             <TableCell style={{fontWeight: 'bold'}} align="left">Price</TableCell>
                             <TableCell style={{fontWeight: 'bold'}} align="left">Trade Date {props.tz}</TableCell>
                             <TableCell style={{fontWeight: 'bold'}} align="left">Expiration Date {props.tz}</TableCell>
@@ -114,17 +115,18 @@ const TradeTables = (props) => (
             </TableContainer>
 
             {/*  ----------- PENDING ORDERS TABLE ------------*/}
-            <Typography component="h1" variant="h5" style={{marginTop: '20px', marginBottom: '10px'}}>Pending
+            <br/>
+            <Typography component="h1" variant="h5" style={{marginBottom: '5px'}}>Pending
                 Orders</Typography>
             <TableContainer className={props.table} component={Paper} style={{maxHeight: "17rem", overflow: "auto"}}>
-                <Table sx={{minWidth: 650}} size="small" aria-label="simple table">
+                <Table stickyHeader sx={{minWidth: 650}} size="small" aria-label="simple table">
                     <TableHead>
                         <TableRow>
                             <TableCell style={{fontWeight: 'bold'}}>Initiating Party</TableCell>
                             <TableCell style={{fontWeight: 'bold'}} align="left">Order Type</TableCell>
                             <TableCell style={{fontWeight: 'bold'}} align="left">Type</TableCell>
                             <TableCell style={{fontWeight: 'bold'}} align="left">Volume</TableCell>
-                            <TableCell style={{fontWeight: 'bold'}} align="left">Stock</TableCell>
+                            <TableCell style={{fontWeight: 'bold'}} align="left">Symbol</TableCell>
                             <TableCell style={{fontWeight: 'bold'}} align="left">Price</TableCell>
                             <TableCell style={{fontWeight: 'bold'}} align="left">Trade Date {props.tz}</TableCell>
                             <TableCell style={{fontWeight: 'bold'}} align="left">Expiration Date {props.tz}</TableCell>

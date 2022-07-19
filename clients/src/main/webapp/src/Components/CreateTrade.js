@@ -210,14 +210,48 @@ class CreateTrade extends Component {
         let PORT = localStorage.getItem('port');
         axios.get(URL + PORT + "/trades", {
             headers: headers
-        }).then(res => {
-            let trades = res.data;
-            trades.forEach(function (item, index) {
-                trades[index] = JSON.parse(item);
-            });
-            let invertedTrades = trades.reverse();
-            this.setState({trades: invertedTrades});
-        }).catch(e => {
+        }).then(async res => {
+                let trades = res.data;
+                trades.forEach(function (item, index) {
+                    trades[index] = JSON.parse(item);
+                });
+                let invertedTrades = trades.reverse();
+                this.setState({trades: invertedTrades});
+
+                // Find expired trades and update
+                let currentDateTimeString = await this.getDateTime(false);
+                let currentDateTime = new Date(currentDateTimeString)
+
+                trades.forEach(function (trade) {
+                    if (trade.tradeStatus === "Pending") {
+                        let selectedDateTime = new Date(trade.expirationDate);
+                        if (currentDateTime >= selectedDateTime) {
+
+                            let data = {
+                                initiatingParty: trade.initiatingParty,
+                                orderType: trade.orderType,
+                                tradeType: trade.tradeType,
+                                stockQuantity: trade.stockQuantity,
+                                stockName: trade.stockName,
+                                stockPrice: trade.stockPrice,
+                                expirationDate: trade.expirationDate,
+                                tradeStatus: "Expired",
+                                tradeID: trade.linearId,
+                                tradeDate: trade.tradeDate,
+                            }
+
+                            // Cancel expired trades
+                            let PORT = parties[trade.initiatingParty]
+                            axios.post(URL + PORT + '/cancelTrade', data, {
+                                headers: headers
+                            }).then(res => {
+                                console.log(res.data.Response);
+                            })
+                        }
+                    }
+                });
+            }
+        ).catch(e => {
             console.log(e);
         });
     }
@@ -390,7 +424,14 @@ class CreateTrade extends Component {
         }
 
         let isEnough = this.checkEnoughBalance(data.tradeType, data.stockQuantity, data.stockName, data.stockPrice, false);
-        if (isEnough) {
+
+
+        let currentDateTimeString = await this.getDateTime(false);
+        let currentDateTime = new Date(currentDateTimeString)
+        let selectedDateTime = new Date(data.expirationDate);
+
+        // check there is enough balance and trade has not expired
+        if (isEnough && currentDateTime < selectedDateTime) {
             console.log(data)
 
             let PORT;
@@ -407,6 +448,8 @@ class CreateTrade extends Component {
             }).then(res => {
                 console.log(res.data.Response);
             })
+        } else {
+            window.alert("Cannot trade: Not enough funds or expired trade.")
         }
     }
 
