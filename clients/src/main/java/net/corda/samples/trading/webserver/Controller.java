@@ -8,6 +8,7 @@ import net.corda.core.contracts.StateAndRef;
 import net.corda.core.contracts.TransactionVerificationException;
 import net.corda.core.contracts.UniqueIdentifier;
 import net.corda.core.identity.CordaX500Name;
+import net.corda.core.identity.Party;
 import net.corda.core.messaging.CordaRPCOps;
 import net.corda.core.node.NodeInfo;
 import net.corda.core.transactions.SignedTransaction;
@@ -126,25 +127,15 @@ public class Controller {
         System.out.println(payload);
         JsonObject convertedObject = new Gson().fromJson(payload, JsonObject.class);
 
-        String initiatingParty = convertedObject.get("initiatingParty").getAsString();
-        String counterParty = convertedObject.get("counterParty").getAsString();
-        String orderType = convertedObject.get("orderType").getAsString();
-        String tradeType = convertedObject.get("tradeType").getAsString();
-        String stockName = convertedObject.get("stockName").getAsString();
-        double stockPrice = convertedObject.get("stockPrice").getAsDouble();
-        int stockQuantity = convertedObject.get("stockQuantity").getAsInt();
-        String expirationDate = convertedObject.get("expirationDate").getAsString();
-        String tradeStatus = convertedObject.get("tradeStatus").getAsString();
+        String counterPartyString = convertedObject.get("counterParty").getAsString();
         String tradeID = convertedObject.get("tradeID").getAsString();
-        String tradeDate = convertedObject.get("tradeDate").getAsString();
         String settlementDate = convertedObject.get("settlementDate").getAsString();
-
         JsonObject resp = new JsonObject();
 
-        if (counterParty == null) {
+        if (counterPartyString == null) {
             resp.addProperty("Response", "Query parameter 'counterParty' missing or has wrong format.\n");
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
-        } else if (proxy.wellKnownPartyFromX500Name(CordaX500Name.parse(counterParty)) == null) {
+        } else if (proxy.wellKnownPartyFromX500Name(CordaX500Name.parse(counterPartyString)) == null) {
             resp.addProperty("Response", "Counter Party named \" + counterParty + \" cannot be found.\\n");
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
         } else if (settlementDate == null || settlementDate.isEmpty() || settlementDate.equals("null")) {
@@ -153,12 +144,8 @@ public class Controller {
         } else {
             try {
                 UniqueIdentifier linearId = new UniqueIdentifier(null, UUID.fromString(tradeID));
-                TradeState counterTradeState = new TradeState(this.proxy.wellKnownPartyFromX500Name(CordaX500Name.parse(initiatingParty)),
-                        this.proxy.wellKnownPartyFromX500Name(CordaX500Name.parse(counterParty)), orderType,
-                        tradeType, stockName, stockPrice, stockQuantity, expirationDate, tradeStatus, tradeDate,
-                        settlementDate, linearId);
-
-                SignedTransaction signedTx = proxy.startTrackedFlowDynamic(SettleTradeFlow.class, counterTradeState).getReturnValue().get();
+                Party counterParty = proxy.wellKnownPartyFromX500Name(CordaX500Name.parse(counterPartyString));
+                SignedTransaction signedTx = proxy.startTrackedFlowDynamic(SettleTradeFlow.class, counterParty, settlementDate, linearId).getReturnValue().get();
 
                 System.out.println("signedTx.getId() =  :" + signedTx.getId());
                 resp.addProperty("Response", "Transaction id " + signedTx.getId() + " committed to ledger.\n");
@@ -179,36 +166,27 @@ public class Controller {
         System.out.println(payload);
         JsonObject convertedObject = new Gson().fromJson(payload, JsonObject.class);
 
-        String initiatingParty = convertedObject.get("initiatingParty").getAsString();
-        String orderType = convertedObject.get("orderType").getAsString();
-        String tradeType = convertedObject.get("tradeType").getAsString();
-        String stockName = convertedObject.get("stockName").getAsString();
-        double stockPrice = convertedObject.get("stockPrice").getAsDouble();
-        int stockQuantity = convertedObject.get("stockQuantity").getAsInt();
-        String expirationDate = convertedObject.get("expirationDate").getAsString();
         String tradeStatus = convertedObject.get("tradeStatus").getAsString();
         String tradeID = convertedObject.get("tradeID").getAsString();
-        String tradeDate = convertedObject.get("tradeDate").getAsString();
-
         JsonObject resp = new JsonObject();
 
-        try {
-            UniqueIdentifier linearId = new UniqueIdentifier(null, UUID.fromString(tradeID));
-            TradeState cancelTradeState = new TradeState(this.proxy.wellKnownPartyFromX500Name(CordaX500Name.parse(initiatingParty)),
-                    null, orderType, tradeType, stockName, stockPrice, stockQuantity, expirationDate, tradeStatus,
-                    tradeDate, null, linearId);
-
-            SignedTransaction signedTx = proxy.startTrackedFlowDynamic(CancelTradeFlow.CancelInitiator.class, cancelTradeState).getReturnValue().get();
-
-            System.out.println("signedTx.getId() =  :" + signedTx.getId());
-            resp.addProperty("Response", "Transaction id " + signedTx.getId() + " committed to ledger.\n");
-            return ResponseEntity.status(HttpStatus.ACCEPTED).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
-        } catch (Exception ex) {
-            System.out.println("Exception : " + ex.getMessage());
-            resp.addProperty("Response", ex.getMessage());
+        if (!(tradeStatus.equals("Cancelled") || tradeStatus.equals("Expired"))) {
+            resp.addProperty("Response", "Query parameter 'tradeStatus' is wrong.\n");
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
-        }
+        } else {
+            try {
+                UniqueIdentifier linearId = new UniqueIdentifier(null, UUID.fromString(tradeID));
+                SignedTransaction signedTx = proxy.startTrackedFlowDynamic(CancelTradeFlow.CancelInitiator.class, tradeStatus, linearId).getReturnValue().get();
 
+                System.out.println("signedTx.getId() =  :" + signedTx.getId());
+                resp.addProperty("Response", "Transaction id " + signedTx.getId() + " committed to ledger.\n");
+                return ResponseEntity.status(HttpStatus.ACCEPTED).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
+            } catch (Exception ex) {
+                System.out.println("Exception : " + ex.getMessage());
+                resp.addProperty("Response", ex.getMessage());
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
+            }
+        }
     }
 
     @RequestMapping(value = "/issueStock", method = RequestMethod.POST)

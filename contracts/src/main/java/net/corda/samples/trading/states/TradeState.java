@@ -1,20 +1,20 @@
 package net.corda.samples.trading.states;
 
 import com.google.common.collect.ImmutableList;
-import net.corda.core.contracts.BelongsToContract;
-import net.corda.core.contracts.ContractState;
-import net.corda.core.contracts.LinearState;
-import net.corda.core.contracts.UniqueIdentifier;
+import net.corda.core.contracts.*;
+import net.corda.core.flows.FlowLogicRef;
+import net.corda.core.flows.FlowLogicRefFactory;
 import net.corda.core.identity.AbstractParty;
 import net.corda.core.identity.Party;
 import net.corda.samples.trading.contracts.TradeContract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.time.Instant;
 import java.util.List;
 
 @BelongsToContract(TradeContract.class)
-public class TradeState implements ContractState, LinearState {
+public class TradeState implements ContractState, LinearState, SchedulableState {
 
     public Party initiatingParty;
     @Nullable
@@ -94,10 +94,6 @@ public class TradeState implements ContractState, LinearState {
         return settlementDate;
     }
 
-    public UniqueIdentifier getTradeId() {
-        return linearId;
-    }
-
     public void setOrderType(String orderType) {
         this.orderType = orderType;
     }
@@ -139,6 +135,19 @@ public class TradeState implements ContractState, LinearState {
     @Override
     public UniqueIdentifier getLinearId() {
         return linearId;
+    }
+
+    @Nullable
+    @Override // Automatically cancel expired trade
+    public ScheduledActivity nextScheduledActivity(@NotNull StateRef thisStateRef, @NotNull FlowLogicRefFactory flowLogicRefFactory) {
+        if (tradeStatus.equals("Pending")) {
+            FlowLogicRef flowLogicRef = flowLogicRefFactory.create(
+                    "net.corda.samples.trading.flows.CancelTradeFlow$CancelInitiator", "Expired", linearId);
+
+            Instant expirationDatetime = Instant.parse(expirationDate + ":00.00Z");
+            return new ScheduledActivity(flowLogicRef, expirationDatetime);
+        } else
+            return null;
     }
 
     @Override

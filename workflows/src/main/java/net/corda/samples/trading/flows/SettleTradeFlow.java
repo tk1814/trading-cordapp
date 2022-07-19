@@ -2,6 +2,7 @@ package net.corda.samples.trading.flows;
 
 import co.paralleluniverse.fibers.Suspendable;
 import net.corda.core.contracts.StateAndRef;
+import net.corda.core.contracts.UniqueIdentifier;
 import net.corda.core.flows.FlowException;
 import net.corda.core.flows.FlowLogic;
 import net.corda.core.flows.StartableByRPC;
@@ -10,7 +11,6 @@ import net.corda.core.transactions.SignedTransaction;
 import net.corda.samples.trading.states.TradeState;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -21,11 +21,16 @@ import java.util.stream.Collectors;
 @StartableByRPC
 public class SettleTradeFlow extends FlowLogic<SignedTransaction> {
 
-    private final TradeState counterTradeState;
+    private final Party counterParty;
+    private final String settlementDate;
+    private final UniqueIdentifier linearId;
     private Party seller;
+    private Party buyer;
 
-    public SettleTradeFlow(TradeState counterTradeState) {
-        this.counterTradeState = counterTradeState;
+    public SettleTradeFlow(Party counterParty, String settlementDate, UniqueIdentifier linearId) {
+        this.counterParty = counterParty;
+        this.settlementDate = settlementDate;
+        this.linearId = linearId;
     }
 
     @Override
@@ -34,31 +39,35 @@ public class SettleTradeFlow extends FlowLogic<SignedTransaction> {
 
         // Check that the incoming counterTradeState matches with the TradeState in the vault before transferring stocks and money
         List<StateAndRef<TradeState>> inputTradeStateList = getServiceHub().getVaultService().queryBy(TradeState.class).getStates().stream()
-                .filter(x -> !x.getState().getData().getInitiatingParty().equals(counterTradeState.getCounterParty()))
+                .filter(x -> !x.getState().getData().getInitiatingParty().equals(counterParty))
                 .filter(x -> x.getState().getData().getTradeStatus().equalsIgnoreCase("Pending"))
-                .filter(x -> x.getState().getData().getTradeId().equals(counterTradeState.getTradeId()))
-                .filter(x -> x.getState().getData().getInitiatingParty().equals(counterTradeState.getInitiatingParty()))
-                .filter(x -> Objects.equals(x.getState().getData().getCounterParty(), null))
-                .filter(x -> x.getState().getData().getOrderType().equals(counterTradeState.getOrderType()))
-                .filter(x -> x.getState().getData().getTradeType().equals(counterTradeState.getTradeType()))
-                .filter(x -> x.getState().getData().getStockName().equals(counterTradeState.getStockName()))
-                .filter(x -> x.getState().getData().getStockPrice() == counterTradeState.getStockPrice())
-                .filter(x -> x.getState().getData().getStockQuantity() == counterTradeState.getStockQuantity())
-                .filter(x -> x.getState().getData().getExpirationDate().equals(counterTradeState.getExpirationDate()))
-                .filter(x -> x.getState().getData().getTradeDate().equals(counterTradeState.getTradeDate()))
-                .filter(x -> x.getState().getData().getSettlementDate() == null)
+                .filter(x -> x.getState().getData().getLinearId().equals(linearId))
                 .collect(Collectors.toList());
 
         if (inputTradeStateList.isEmpty()) {
-            throw new RuntimeException("Trade state with trade ID: " + counterTradeState.getTradeId() + " was not found in the vault.");
+            throw new RuntimeException("Trade state with trade ID: " + linearId + " was not found in the vault.");
         }
 
-        if (counterTradeState.getTradeType().equals("Sell")) // called by seller/initiatingParty
-            seller = counterTradeState.getCounterParty();
-        else if (counterTradeState.getTradeType().equals("Buy"))
-            seller = counterTradeState.getInitiatingParty(); // called by seller/counterParty
-        subFlow(new DvPInitiatorFlow(counterTradeState.getStockName(), counterTradeState.getStockQuantity(), seller, counterTradeState.getStockQuantity() * counterTradeState.getStockPrice()));
-        return subFlow(new CounterTradeFlow.CounterInitiator(counterTradeState));
+        TradeState inputState = inputTradeStateList.get(0).getState().getData();
+        TradeState counterTradeState = new TradeState(inputState.getInitiatingParty(), counterParty, inputState.getOrderType(),
+                inputState.getTradeType(), inputState.getStockName(), inputState.getStockPrice(),
+                inputState.getStockQuantity(), inputState.getExpirationDate(), "Accepted",
+                inputState.getTradeDate(), settlementDate, linearId);
 
+        if (inputState.getTradeType().equals("Sell")) { // called by seller:initiatingParty
+            buyer = counterTradeState.getCounterParty();
+            seller = counterTradeState.getInitiatingParty();
+        }
+        else if (inputState.getTradeType().equals("Buy")) { // called by seller:counterParty
+            buyer = counterTradeState.getInitiatingParty();
+            seller = counterTradeState.getCounterParty();
+        }
+
+        if (getOurIdentity().equals(seller)) { // check that seller is actually the caller
+            subFlow(new DvPInitiatorFlow(counterTradeState.getStockName(), counterTradeState.getStockQuantity(), buyer, counterTradeState.getStockQuantity() * counterTradeState.getStockPrice()));
+            return subFlow(new CounterTradeFlow.CounterInitiator(counterTradeState));
+        } else {
+            throw new RuntimeException("Flow called by unauthorised party.");
+        }
     }
 }

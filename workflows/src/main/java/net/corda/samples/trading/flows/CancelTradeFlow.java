@@ -3,6 +3,7 @@ package net.corda.samples.trading.flows;
 import co.paralleluniverse.fibers.Suspendable;
 import com.google.common.collect.ImmutableList;
 import net.corda.core.contracts.StateAndRef;
+import net.corda.core.contracts.UniqueIdentifier;
 import net.corda.core.flows.*;
 import net.corda.core.identity.Party;
 import net.corda.core.node.StatesToRecord;
@@ -14,18 +15,20 @@ import net.corda.samples.trading.states.TradeState;
 import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class CancelTradeFlow {
+    @SchedulableFlow
     @InitiatingFlow
     @StartableByRPC
     public static class CancelInitiator extends FlowLogic<SignedTransaction> {
 
-        private final TradeState cancelTradeState;
+        private final String tradeStatus;
+        private final UniqueIdentifier linearId;
 
-        public CancelInitiator(TradeState tradeState) {
-            this.cancelTradeState = tradeState;
+        public CancelInitiator(String tradeStatus, UniqueIdentifier linearId) {
+            this.tradeStatus = tradeStatus;
+            this.linearId = linearId;
         }
 
         @Override
@@ -38,51 +41,53 @@ public class CancelTradeFlow {
             List<StateAndRef<TradeState>> inputTradeStateList = getServiceHub().getVaultService().queryBy(TradeState.class).getStates().stream()
                     .filter(x -> x.getState().getData().getInitiatingParty().equals(getOurIdentity()))
                     .filter(x -> x.getState().getData().getTradeStatus().equalsIgnoreCase("Pending"))
-                    .filter(x -> x.getState().getData().getTradeId().equals(cancelTradeState.getTradeId()))
-                    .filter(x -> Objects.equals(x.getState().getData().getCounterParty(), null))
-                    .filter(x -> x.getState().getData().getOrderType().equals(cancelTradeState.getOrderType()))
-                    .filter(x -> x.getState().getData().getTradeType().equals(cancelTradeState.getTradeType()))
-                    .filter(x -> x.getState().getData().getStockName().equals(cancelTradeState.getStockName()))
-                    .filter(x -> x.getState().getData().getStockPrice() == cancelTradeState.getStockPrice())
-                    .filter(x -> x.getState().getData().getStockQuantity() == cancelTradeState.getStockQuantity())
-                    .filter(x -> x.getState().getData().getExpirationDate().equals(cancelTradeState.getExpirationDate()))
-                    .filter(x -> x.getState().getData().getTradeDate().equals(cancelTradeState.getTradeDate()))
-                    .filter(x -> x.getState().getData().getSettlementDate() == null)
+                    .filter(x -> x.getState().getData().getLinearId().equals(linearId))
                     .collect(Collectors.toList());
 
             if (inputTradeStateList.isEmpty()) {
-                throw new RuntimeException("Trade state with trade ID: " + cancelTradeState.getTradeId() + " was not found in the vault.");
+                throw new RuntimeException("Trade state with trade ID: " + linearId + " was not found in the vault.");
             }
             StateAndRef<TradeState> inputTradeState = inputTradeStateList.get(0);
 
-            TradeContract.Commands.CancelTrade command = new TradeContract.Commands.CancelTrade();
-            List<PublicKey> requiredSigns = ImmutableList.of(cancelTradeState.getInitiatingParty().getOwningKey());
+            TradeState inputState = inputTradeState.getState().getData();
+            if (getOurIdentity().equals(inputState.initiatingParty)) { // check that caller is actually the initiating party
 
-            TransactionBuilder txBuilder = new TransactionBuilder(notary)
-                    .addOutputState(cancelTradeState, TradeContract.ID)
-                    .addInputState(inputTradeState)
-                    .addCommand(command, requiredSigns);
+                TradeState outputState = new TradeState(inputState.getInitiatingParty(), null,
+                        inputState.getOrderType(), inputState.getTradeType(), inputState.getStockName(),
+                        inputState.getStockPrice(), inputState.getStockQuantity(), inputState.getExpirationDate(), tradeStatus,
+                        inputState.getTradeDate(), null, linearId);
 
-            txBuilder.verify(getServiceHub());
+                TradeContract.Commands.CancelTrade command = new TradeContract.Commands.CancelTrade();
+                List<PublicKey> requiredSigns = ImmutableList.of(outputState.getInitiatingParty().getOwningKey());
 
-            SignedTransaction signedTx = getServiceHub().signInitialTransaction(txBuilder);
+                TransactionBuilder txBuilder = new TransactionBuilder(notary)
+                        .addOutputState(outputState, TradeContract.ID)
+                        .addInputState(inputTradeState)
+                        .addCommand(command, requiredSigns);
 
-            // Fetch all parties from the network map and remove the initiating party and notary.
-            // All the parties are added as  participants to the trade state so that it's visible to all the parties in the network.
-            List<Party> parties = getServiceHub().getNetworkMapCache().getAllNodes().stream()
-                    .map(nodeInfo -> nodeInfo.getLegalIdentities().get(0))
-                    .collect(Collectors.toList());
-            parties.remove(getOurIdentity());
-            parties.remove(notary);
+                txBuilder.verify(getServiceHub());
 
-            // Call finality Flow to notarise the transaction and record it in all participants' ledger.
-            List<FlowSession> counterPartySessions = new ArrayList<>();
-            for (Party party : parties) {
-                counterPartySessions.add(initiateFlow(party));
+                SignedTransaction signedTx = getServiceHub().signInitialTransaction(txBuilder);
+
+                // Fetch all parties from the network map and remove the initiating party and notary.
+                // All the parties are added as  participants to the trade state so that it's visible to all the parties in the network.
+                List<Party> parties = getServiceHub().getNetworkMapCache().getAllNodes().stream()
+                        .map(nodeInfo -> nodeInfo.getLegalIdentities().get(0))
+                        .collect(Collectors.toList());
+                parties.remove(getOurIdentity());
+                parties.remove(notary);
+
+                // Call finality Flow to notarise the transaction and record it in all participants' ledger.
+                List<FlowSession> counterPartySessions = new ArrayList<>();
+                for (Party party : parties) {
+                    counterPartySessions.add(initiateFlow(party));
+                }
+
+                // Notarise and record the transaction in every parties' vaults.
+                return subFlow(new FinalityFlow(signedTx, counterPartySessions));
+            } else {
+                throw new RuntimeException("Flow called by unauthorised party.");
             }
-
-            // Notarise and record the transaction in every parties' vaults.
-            return subFlow(new FinalityFlow(signedTx, counterPartySessions));
         }
     }
 

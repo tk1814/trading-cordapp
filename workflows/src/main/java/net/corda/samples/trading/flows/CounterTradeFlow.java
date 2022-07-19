@@ -85,21 +85,11 @@ public class CounterTradeFlow {
             List<StateAndRef<TradeState>> inputTradeStateList = getServiceHub().getVaultService().queryBy(TradeState.class).getStates().stream()
                     .filter(x -> !x.getState().getData().getInitiatingParty().equals(counterTradeState.getCounterParty()))
                     .filter(x -> x.getState().getData().getTradeStatus().equalsIgnoreCase("Pending"))
-                    .filter(x -> x.getState().getData().getTradeId().equals(counterTradeState.getTradeId()))
-                    .filter(x -> x.getState().getData().getInitiatingParty().equals(counterTradeState.getInitiatingParty()))
-                    .filter(x -> Objects.equals(x.getState().getData().getCounterParty(), null))
-                    .filter(x -> x.getState().getData().getOrderType().equals(counterTradeState.getOrderType()))
-                    .filter(x -> x.getState().getData().getTradeType().equals(counterTradeState.getTradeType()))
-                    .filter(x -> x.getState().getData().getStockName().equals(counterTradeState.getStockName()))
-                    .filter(x -> x.getState().getData().getStockPrice() == counterTradeState.getStockPrice())
-                    .filter(x -> x.getState().getData().getStockQuantity() == counterTradeState.getStockQuantity())
-                    .filter(x -> x.getState().getData().getExpirationDate().equals(counterTradeState.getExpirationDate()))
-                    .filter(x -> x.getState().getData().getTradeDate().equals(counterTradeState.getTradeDate()))
-                    .filter(x -> x.getState().getData().getSettlementDate() == null)
+                    .filter(x -> x.getState().getData().getLinearId().equals(counterTradeState.getLinearId()))
                     .collect(Collectors.toList());
 
             if (inputTradeStateList.isEmpty()) {
-                throw new RuntimeException("Trade state with trade ID: " + counterTradeState.getTradeId() + " was not found in the vault.");
+                throw new RuntimeException("Trade state with trade ID: " + counterTradeState.getLinearId() + " was not found in the vault.");
             }
             StateAndRef<TradeState> inputTradeState = inputTradeStateList.get(0);
 

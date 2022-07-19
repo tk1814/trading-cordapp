@@ -217,39 +217,6 @@ class CreateTrade extends Component {
                 });
                 let invertedTrades = trades.reverse();
                 this.setState({trades: invertedTrades});
-
-                // Find expired trades and update
-                let currentDateTimeString = await this.getDateTime(false);
-                let currentDateTime = new Date(currentDateTimeString)
-
-                trades.forEach(function (trade) {
-                    if (trade.tradeStatus === "Pending") {
-                        let selectedDateTime = new Date(trade.expirationDate);
-                        if (currentDateTime >= selectedDateTime) {
-
-                            let data = {
-                                initiatingParty: trade.initiatingParty,
-                                orderType: trade.orderType,
-                                tradeType: trade.tradeType,
-                                stockQuantity: trade.stockQuantity,
-                                stockName: trade.stockName,
-                                stockPrice: trade.stockPrice,
-                                expirationDate: trade.expirationDate,
-                                tradeStatus: "Expired",
-                                tradeID: trade.linearId,
-                                tradeDate: trade.tradeDate,
-                            }
-
-                            // Cancel expired trades
-                            let PORT = parties[trade.initiatingParty]
-                            axios.post(URL + PORT + '/cancelTrade', data, {
-                                headers: headers
-                            }).then(res => {
-                                console.log(res.data.Response);
-                            })
-                        }
-                    }
-                });
             }
         ).catch(e => {
             console.log(e);
@@ -406,39 +373,29 @@ class CreateTrade extends Component {
     };
 
     counterTradeButton = async (index) => {
-        let partyTrades = this.state.trades;
+        let trades = this.state.trades;
 
         const data = {
-            initiatingParty: partyTrades[index].initiatingParty,
             counterParty: this.state.counterParty,
-            orderType: partyTrades[index].orderType,
-            tradeType: partyTrades[index].tradeType,
-            stockQuantity: partyTrades[index].stockQuantity,
-            stockName: partyTrades[index].stockName,
-            stockPrice: partyTrades[index].stockPrice,
-            expirationDate: partyTrades[index].expirationDate,
-            tradeStatus: "Accepted",
-            tradeDate: partyTrades[index].tradeDate,
             settlementDate: await this.getDateTime(true),
-            tradeID: partyTrades[index].linearId,
+            tradeID: trades[index].linearId,
         }
 
-        let isEnough = this.checkEnoughBalance(data.tradeType, data.stockQuantity, data.stockName, data.stockPrice, false);
-
+        let isEnough = this.checkEnoughBalance(trades[index].tradeType, trades[index].stockQuantity, trades[index].stockName, trades[index].stockPrice, false);
 
         let currentDateTimeString = await this.getDateTime(false);
         let currentDateTime = new Date(currentDateTimeString)
-        let selectedDateTime = new Date(data.expirationDate);
+        let selectedDateTime = new Date(trades[index].expirationDate);
 
         // check there is enough balance and trade has not expired
         if (isEnough && currentDateTime < selectedDateTime) {
             console.log(data)
 
             let PORT;
-            if (data.tradeType === "Sell") {
+            if (trades[index].tradeType === "Sell") {
                 // initiating party calls to move stocks from initiating party to counterparty
-                PORT = parties[data.initiatingParty] // get port from initiating party
-            } else if (data.tradeType === "Buy") {
+                PORT = parties[trades[index].initiatingParty] // get port from initiating party
+            } else if (trades[index].tradeType === "Buy") {
                 // counterparty calls to move stocks from counterparty to initiating party
                 PORT = localStorage.getItem('port');
             }
@@ -455,18 +412,10 @@ class CreateTrade extends Component {
 
     cancelTradeButton = (index) => {
 
-        let partyTrades = this.state.trades;
+        let trades = this.state.trades;
         const data = {
-            initiatingParty: partyTrades[index].initiatingParty,
-            orderType: partyTrades[index].orderType,
-            tradeType: partyTrades[index].tradeType,
-            stockQuantity: partyTrades[index].stockQuantity,
-            stockName: partyTrades[index].stockName,
-            stockPrice: partyTrades[index].stockPrice,
-            expirationDate: partyTrades[index].expirationDate,
             tradeStatus: "Cancelled",
-            tradeID: partyTrades[index].linearId,
-            tradeDate: partyTrades[index].tradeDate,
+            tradeID: trades[index].linearId,
         }
         console.log(data)
         let PORT = localStorage.getItem('port');

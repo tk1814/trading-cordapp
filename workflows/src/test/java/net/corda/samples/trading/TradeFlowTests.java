@@ -258,7 +258,7 @@ public class TradeFlowTests {
         futureA.get();
 
         // Cancel trade
-        CordaFuture<SignedTransaction> futureCancelTrade = partyA.startFlow(new CancelTradeFlow.CancelInitiator(cancelTradeState));
+        CordaFuture<SignedTransaction> futureCancelTrade = partyA.startFlow(new CancelTradeFlow.CancelInitiator(cancelTradeState.getTradeStatus(), cancelTradeState.getLinearId()));
         network.runNetwork();
         SignedTransaction stx = futureCancelTrade.get();
         SecureHash stxID = stx.getId();
