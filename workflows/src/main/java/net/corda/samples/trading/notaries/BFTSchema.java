@@ -4,9 +4,7 @@ import net.corda.core.schemas.MappedSchema;
 import net.corda.node.services.transactions.PersistentUniquenessProvider;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
 
 public final class BFTSchema extends MappedSchema {
@@ -17,7 +15,7 @@ public final class BFTSchema extends MappedSchema {
     }
 
     private static Iterable<? extends Class<?>> lst = Arrays.asList(PersistentUniquenessProvider.BaseComittedState.class,PersistentUniquenessProvider.Request.class,
-            BFTNotary.CommittedState.class,BFTNotary.CommittedTransaction.class);
+            BFTNotary.CommittedState.class, BFTNotary.CommittedTransaction.class);
 
 
     public BFTSchema() {

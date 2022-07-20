@@ -1,18 +1,20 @@
 package net.corda.samples.trading.notaries;
 
-import java.io.IOException;
-import java.net.*;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.attribute.FileAttribute;
-import java.util.*;
-
-
 import com.typesafe.config.Config;
 import kotlin.jvm.internal.Intrinsics;
 import net.corda.core.utilities.NetworkHostAndPort;
 import net.corda.node.services.transactions.PathManager;
 import org.jetbrains.annotations.NotNull;
+
+import java.io.IOException;
+import java.net.Socket;
+import java.net.SocketException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 
 public final class BFTConfigInternal extends PathManager<BFTConfigInternal> {
     private final List<NetworkHostAndPort> replicaAddresses;
@@ -22,6 +24,7 @@ public final class BFTConfigInternal extends PathManager<BFTConfigInternal> {
     private int clusterSize;
 
     private Path path;
+    private Boolean debug;
 
 
     @NotNull
@@ -38,11 +41,13 @@ public final class BFTConfigInternal extends PathManager<BFTConfigInternal> {
         super(Files.createTempDirectory("bft-smart-config"));
         this.replicaAddresses = replicaAddresses;
         this.exposeRaces = exposeRaces;
+        this.debug = debug;
+        this.clusterSize = replicaAddresses.size();
         Set claimedPorts = new LinkedHashSet<NetworkHostAndPort>();
 
 
         //int replicaId;
-        for(int replicaId=0; replicaId<=this.clusterSize;replicaId++){
+        for(int replicaId=0; replicaId<this.clusterSize;replicaId++){
             List<NetworkHostAndPort> networkHostAndPorts = replicaPorts(replicaId);
             for(NetworkHostAndPort port : networkHostAndPorts){
                 claimedPorts.add(port);
@@ -88,7 +93,7 @@ public final class BFTConfigInternal extends PathManager<BFTConfigInternal> {
 
 
     public final int getClusterSize() {
-        return this.replicaAddresses.size();
+        return this.clusterSize;
     }
 
 //    private final void configWriter(String name, PrintWriter. block) {
@@ -135,8 +140,6 @@ public final class BFTConfigInternal extends PathManager<BFTConfigInternal> {
 
     private final List<NetworkHostAndPort> replicaPorts(int replicaId) {
         NetworkHostAndPort base = this.replicaAddresses.get(replicaId);
-
-        //return Arrays.stream(BFTPort.values()).map(n->BFTPort.values()).forEach(n -> BFTPort.n.ofReplica(base));
         List<NetworkHostAndPort> lst = new ArrayList<>();
         lst.add(BFTPort.FOR_REPLICAS.ofReplica(base));
         lst.add(BFTPort.FOR_CLIENTS.ofReplica(base));
@@ -227,8 +230,6 @@ final class BFTConfig {
             throw (Throwable)new IllegalArgumentException(str.toString());
         }
 
-
-
     }
 
 
@@ -249,28 +250,6 @@ final class BFTConfig {
         return this.exposeRaces;
     }
 
-    public final int component1() {
-        return this.replicaId;
-    }
-
-    @NotNull
-    public final List<NetworkHostAndPort> component2() {
-        return this.clusterAddresses;
-    }
-
-    public final boolean component3() {
-        return this.debug;
-    }
-
-    public final boolean component4() {
-        return this.exposeRaces;
-    }
-
-    @NotNull
-    public final BFTConfig copy(int replicaId, @NotNull List<NetworkHostAndPort> clusterAddresses, boolean debug, boolean exposeRaces) throws Throwable {
-        Intrinsics.checkParameterIsNotNull(clusterAddresses, "clusterAddresses");
-        return new BFTConfig(replicaId, clusterAddresses, debug, exposeRaces);
-    }
 
     @NotNull
     public String toString() {

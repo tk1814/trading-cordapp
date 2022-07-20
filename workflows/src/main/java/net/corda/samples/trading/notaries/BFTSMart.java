@@ -8,37 +8,18 @@ import bftsmart.tom.ServiceProxy;
 import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.core.TOMLayer;
 import bftsmart.tom.core.messages.TOMMessage;
-import bftsmart.tom.server.Executable;
-import bftsmart.tom.server.Recoverable;
 import bftsmart.tom.server.RequestVerifier;
 import bftsmart.tom.server.defaultservices.DefaultRecoverable;
 import bftsmart.tom.util.Extractor;
-
-import java.io.*;
-import java.net.SocketException;
-import java.nio.file.Path;
-import java.security.PublicKey;
-import java.util.*;
-
-import javax.persistence.criteria.CriteriaDelete;
-import javax.persistence.criteria.CriteriaQuery;
 import kotlin.NotImplementedError;
 import kotlin.Pair;
 import kotlin.TypeCastException;
-import kotlin.Unit;
 import kotlin.jvm.functions.Function1;
 import kotlin.jvm.internal.Intrinsics;
 import kotlin.jvm.internal.Reflection;
-
 import net.corda.core.contracts.StateRef;
 import net.corda.core.contracts.TimeWindow;
-import net.corda.core.crypto.Crypto;
-import net.corda.core.crypto.DigitalSignature;
-import net.corda.core.crypto.SecureHash;
-import net.corda.core.crypto.SignableData;
-import net.corda.core.crypto.SignatureMetadata;
-import net.corda.core.crypto.SignedData;
-import net.corda.core.crypto.TransactionSignature;
+import net.corda.core.crypto.*;
 import net.corda.core.flows.NotarisationPayload;
 import net.corda.core.flows.NotarisationRequestSignature;
 import net.corda.core.flows.NotaryError;
@@ -51,10 +32,7 @@ import net.corda.core.internal.notary.NotaryInternalException;
 import net.corda.core.internal.notary.NotaryUtilsKt;
 import net.corda.core.schemas.PersistentStateRef;
 import net.corda.core.serialization.CordaSerializable;
-import net.corda.core.serialization.SerializationAPIKt;
 import net.corda.core.serialization.SingletonSerializeAsToken;
-
-
 import net.corda.node.services.api.ServiceHubInternal;
 import net.corda.node.services.transactions.PersistentUniquenessProvider;
 import net.corda.node.utilities.AppendOnlyPersistentMap;
@@ -64,7 +42,15 @@ import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
+
+import javax.persistence.criteria.CriteriaDelete;
+import javax.persistence.criteria.CriteriaQuery;
+import java.io.*;
+import java.net.SocketException;
+import java.nio.file.Path;
+import java.security.PublicKey;
+import java.util.*;
+import java.util.concurrent.Callable;
 
 public  class BFTSMart {
     //public static BFTSMart INSTANCE = new BFTSMart();
@@ -111,7 +97,7 @@ public  class BFTSMart {
             private  SignedData<NotaryError> error;
 
             @NotNull
-            public  SignedData<NotaryError> getError() {
+            public SignedData<NotaryError> getError() {
                 return this.error;
             }
 
@@ -134,7 +120,7 @@ public  class BFTSMart {
 
         public static  class Signature extends ReplicaResponse {
             @NotNull
-            private  TransactionSignature txSignature;
+            private TransactionSignature txSignature;
 
             @NotNull
             public  TransactionSignature getTxSignature() {
@@ -144,17 +130,6 @@ public  class BFTSMart {
             public Signature(@NotNull TransactionSignature txSignature) {
                 super();
                 this.txSignature = txSignature;
-            }
-
-            @NotNull
-            public  TransactionSignature component1() {
-                return this.txSignature;
-            }
-
-            @NotNull
-            public  Signature copy(@NotNull TransactionSignature txSignature) {
-                Intrinsics.checkParameterIsNotNull(txSignature, "txSignature");
-                return new Signature(txSignature);
             }
 
             @NotNull
@@ -266,13 +241,13 @@ public  class BFTSMart {
 
         private  int clientId;
 
-        private  BFTSMart.Cluster cluster;
+        private  Cluster cluster;
 
         private  BFTNotary notaryService;
 
         //private static  Logger log = KotlinUtilsKt.contextLogger(Companion);
 
-        public Client(@NotNull BFTConfigInternal config, int clientId, @NotNull BFTSMart.Cluster cluster, @NotNull BFTNotary notaryService) {
+        public Client(@NotNull BFTConfigInternal config, int clientId, @NotNull Cluster cluster, @NotNull BFTNotary notaryService) {
             this.clientId = clientId;
             this.cluster = cluster;
             this.notaryService = notaryService;
@@ -303,10 +278,10 @@ public  class BFTSMart {
         }
 
         @NotNull
-        public  BFTSMart.ClusterResponse commitTransaction(@NotNull NotarisationPayload payload, @NotNull Party otherSide) throws InterruptedException, IOException, ClassNotFoundException {
+        public  ClusterResponse commitTransaction(@NotNull NotarisationPayload payload, @NotNull Party otherSide) throws InterruptedException, IOException, ClassNotFoundException {
             awaitClientConnectionToCluster();
             this.cluster.waitUntilAllReplicasHaveInitialized();
-            BFTSMart.CommitRequest commitRequest = new BFTSMart.CommitRequest(payload, otherSide);
+            CommitRequest commitRequest = new CommitRequest(payload, otherSide);
 
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
             ObjectOutput out = new ObjectOutputStream(bos);
@@ -320,7 +295,7 @@ public  class BFTSMart {
 
             ByteArrayInputStream bis = new ByteArrayInputStream(responseBytes);
             ObjectInput in = new ObjectInputStream(bis);
-            BFTSMart.ClusterResponse response = (BFTSMart.ClusterResponse)in.readObject();
+            ClusterResponse response = (ClusterResponse)in.readObject();
             in.close();
             bis.close();
             return response;
@@ -438,7 +413,7 @@ public  class BFTSMart {
         private  DeclaredField<ServerCommunicationSystem> csField;
 
         public CordaServiceReplica(int replicaId, @NotNull Path configHome, @NotNull DefaultRecoverable owner) {
-            super(replicaId, configHome.toString(), true, (Executable)owner, (Recoverable)owner, null);
+            super(replicaId, configHome.toString(), false, owner, owner,new Verifier());
             this.tomLayerField = InternalUtils.declaredField(this, Reflection.getOrCreateKotlinClass(ServiceReplica.class), "tomLayer");
             this.csField = InternalUtils.declaredField(this, Reflection.getOrCreateKotlinClass(ServiceReplica.class), "cs");
         }
@@ -453,6 +428,7 @@ public  class BFTSMart {
             tomLayer.getDeliveryThread().join();
         }
     }
+
 
     public abstract static class Replica extends DefaultRecoverable {
 
@@ -470,7 +446,7 @@ public  class BFTSMart {
         private  PublicKey notaryIdentityKey;
 
 
-        public Replica(@NotNull BFTConfigInternal config, int replicaId, @NotNull Function1 createMap, @NotNull ServiceHubInternal services, @NotNull PublicKey notaryIdentityKey) throws SocketException, InterruptedException {
+        public Replica(@NotNull BFTConfigInternal config, int replicaId, Callable<AppendOnlyPersistentMap<StateRef, SecureHash, BFTNotary.CommittedState, ? extends PersistentStateRef>> createMap, @NotNull ServiceHubInternal services, @NotNull PublicKey notaryIdentityKey) throws SocketException, InterruptedException {
             this.config = config;
             this.services = services;
             this.notaryIdentityKey = notaryIdentityKey;
@@ -496,7 +472,7 @@ public  class BFTSMart {
 
 
             config.waitUntilReplicaWillNotPrintStackTrace(replicaId);
-            this.replica = new BFTSMart.CordaServiceReplica(replicaId, config.getPath(), this);
+            this.replica = new CordaServiceReplica(replicaId, config.getPath(), this);
         }
 
 
@@ -557,66 +533,60 @@ public  class BFTSMart {
 
         }
 
-        protected  void commitInputStates(@NotNull List states, @NotNull SecureHash txId, @NotNull CordaX500Name callerName, @NotNull NotarisationRequestSignature requestSignature, @Nullable TimeWindow timeWindow, @NotNull List references) {
+        protected  void commitInputStates(@NotNull List<StateRef> states, @NotNull SecureHash txId, @NotNull CordaX500Name callerName, @NotNull NotarisationRequestSignature requestSignature, @Nullable TimeWindow timeWindow, @NotNull List<StateRef> references) {
 
-            services.getDatabase().transaction((Function1)(new Function1() {
-
-                public Object invoke(Object var1) {
-                    try {
-                        this.invoke((DatabaseTransaction)var1);
-                    } catch (Throwable throwable) {
-                        throwable.printStackTrace();
-                    }
-                    return null;
-                }
-
-                public  void invoke(@NotNull DatabaseTransaction $receiver) throws Throwable {
-                    Replica.this.logRequest(txId, callerName, requestSignature);
+            services.getDatabase().transaction(((it) -> {
+                try {
+                    this.logRequest(txId, callerName, requestSignature);
                     LinkedHashMap<StateRef, StateConsumptionDetails> conflictingStates = new LinkedHashMap();
-                    Replica.this.checkConflict(conflictingStates, states, StateConsumptionDetails.ConsumedStateType.INPUT_STATE);
-                    Replica.this.checkConflict(conflictingStates, references, StateConsumptionDetails.ConsumedStateType.REFERENCE_INPUT_STATE);
+                    this.checkConflict(conflictingStates, states, StateConsumptionDetails.ConsumedStateType.INPUT_STATE);
+                    this.checkConflict(conflictingStates, references, StateConsumptionDetails.ConsumedStateType.REFERENCE_INPUT_STATE);
                     if (!conflictingStates.isEmpty()) {
                         if (states.isEmpty()) {
-                            Replica.this.handleReferenceConflicts(txId, conflictingStates);
+                            this.handleReferenceConflicts(txId, conflictingStates);
                         } else {
-                            Replica.this.handleConflicts(txId, conflictingStates);
+                            this.handleConflicts(txId, conflictingStates);
                         }
                     } else {
-                        Replica.this.handleNoConflicts(timeWindow, states, txId);
+                        this.handleNoConflicts(timeWindow, states, txId);
                     }
-
+                } catch (Throwable e) {
+                    e.printStackTrace();
                 }
+                return null;
             }));
         }
 
+        // check whether this transaction has been committed
         private  boolean previouslyCommitted(SecureHash txId) {
             Session session = DatabaseTransactionKt.currentDBSession();
             return (session.find(BFTNotary.CommittedTransaction.class, txId.toString()) != null);
         }
 
-        private  void handleReferenceConflicts(SecureHash txId, LinkedHashMap<StateRef, StateConsumptionDetails> conflictingStates) throws NotaryInternalException {
+        private void handleReferenceConflicts(SecureHash txId, LinkedHashMap<StateRef, StateConsumptionDetails> conflictingStates) throws NotaryInternalException {
             if (!this.previouslyCommitted(txId)) {
+                //this transaction was not previously committed,
+                // but One or more input states or referenced states have already been used as input states in other transactions.
                 NotaryError.Conflict conflictError = new NotaryError.Conflict(txId, conflictingStates);
-
-                throw new NotaryInternalException((NotaryError)conflictError);
+                throw new NotaryInternalException(conflictError);
             }
 
         }
 
         private  void handleConflicts(SecureHash txId, LinkedHashMap<StateRef, StateConsumptionDetails> conflictingStates) throws NotaryInternalException {
-
             if (NotaryUtilsKt.isConsumedByTheSameTx(txId.reHash(), conflictingStates)) {
+                // transaction already notarised
                 return;
-
             } else {
                 NotaryError.Conflict conflictError = new NotaryError.Conflict(txId, conflictingStates);
-                throw new NotaryInternalException((NotaryError)conflictError);
+                throw new NotaryInternalException(conflictError);
             }
         }
 
         private  void handleNoConflicts(TimeWindow timeWindow, List<StateRef> states, SecureHash txId) throws Throwable {
             if (states.isEmpty() && previouslyCommitted(txId))
                 return;
+            // verify the timewindow
             NotaryError.TimeWindowInvalid outsideTimeWindowError = NotaryUtilsKt.validateTimeWindow(this.services.getClock().instant(), timeWindow);
 
             if (outsideTimeWindowError == null) {
@@ -626,13 +596,24 @@ public  class BFTSMart {
                 Session session = DatabaseTransactionKt.currentDBSession();
                 session.persist(new BFTNotary.CommittedTransaction(txId.toString()));
             } else {
-                throw new NotaryInternalException((NotaryError)outsideTimeWindowError);
+                throw new NotaryInternalException(outsideTimeWindowError);
             }
         }
 
-        private  void logRequest(SecureHash txId, CordaX500Name callerName, NotarisationRequestSignature requestSignature) {
-            Intrinsics.checkExpressionValueIsNotNull(this.services.getClock().instant(), "services.clock.instant()");
-            //PersistentUniquenessProvider.Request request = new PersistentUniquenessProvider.Request(null, txId.toString(), callerName.toString(), SerializationAPIKt.serialize(requestSignature, null, null, 3, null).getBytes(), this.services.getClock().instant(), 1, null);
+        private  void logRequest(SecureHash txId, CordaX500Name callerName, NotarisationRequestSignature requestSignature) throws IOException {
+
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            ObjectOutput out = new ObjectOutputStream(bos);
+            out.writeObject(requestSignature);
+            out.flush();
+            bos.flush();
+            out.close();
+            bos.close();
+            //return bos.toByteArray();
+            //byte[] bytes = bos.toByteArray();
+
+//txId.toString(),
+//                    callerName.toString(), new byte[]{}, this.services.getClock().instant()
             PersistentUniquenessProvider.Request request = new PersistentUniquenessProvider.Request();
             Session session = DatabaseTransactionKt.currentDBSession();
             session.persist(request);
@@ -640,17 +621,10 @@ public  class BFTSMart {
 
         @NotNull
         protected  DigitalSignature.WithKey sign(@NotNull byte[] bytes) {
-            return (DigitalSignature.WithKey) this.services.getDatabase().transaction((Function1)(new Function1() {
-                public Object invoke(Object var1) {
-                    return this.invoke((DatabaseTransaction)var1);
+            return (DigitalSignature.WithKey) this.services.getDatabase().transaction((Function1)((it) ->  {
+                    return this.getServices().getKeyManagementService().sign(bytes, Replica.this.getNotaryIdentityKey());
                 }
-
-                @NotNull
-                public  DigitalSignature.WithKey invoke(@NotNull DatabaseTransaction $receiver) {
-                    Intrinsics.checkParameterIsNotNull($receiver, "$receiver");
-                    return Replica.this.getServices().getKeyManagementService().sign(bytes, Replica.this.getNotaryIdentityKey());
-                }
-            }));
+            ));
         }
 
         @NotNull
@@ -712,8 +686,8 @@ public  class BFTSMart {
 
 
             return requests;
-            
-            
+
+
 
 
         }
@@ -723,31 +697,29 @@ public  class BFTSMart {
             try {
                 System.out.println("setState called");
                 ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
-                ObjectInput in = new ObjectInputStream(bis);
+                ObjectInput in = null;
+
+                in = new ObjectInputStream(bis);
+
                 Pair pair = (Pair<LinkedHashMap<StateRef, SecureHash>, List<PersistentUniquenessProvider.Request>>)in.readObject();
+
+
                 LinkedHashMap<StateRef, SecureHash> committedStates = (LinkedHashMap)pair.component1();
                 List<PersistentUniquenessProvider.Request> requests = (List)pair.component2();
-                this.services.getDatabase().transaction((Function1)(new Function1() {
-                    public Object invoke(Object var1) {
-                        this.invoke((DatabaseTransaction)var1);
-                        return Unit.INSTANCE;
-                    }
-
-                    public  void invoke(@NotNull DatabaseTransaction $receiver) {
-                        Intrinsics.checkParameterIsNotNull($receiver, "$receiver");
+                this.services.getDatabase().transaction((Function1)(($receiver)-> {
                         commitLog.clear();
                         commitLog.putAll(committedStates);
 
-                        CriteriaDelete deleteQuery = $receiver.getSession().getCriteriaBuilder().createCriteriaDelete(PersistentUniquenessProvider.Request.class);
+                        CriteriaDelete deleteQuery = ((DatabaseTransaction)$receiver).getSession().getCriteriaBuilder().createCriteriaDelete(PersistentUniquenessProvider.Request.class);
                         deleteQuery.from(PersistentUniquenessProvider.Request.class);
-                        $receiver.getSession().createQuery(deleteQuery).executeUpdate();
+                        ((DatabaseTransaction)$receiver).getSession().createQuery(deleteQuery).executeUpdate();
 
                         for(PersistentUniquenessProvider.Request request:requests){
-                            $receiver.getSession().persist(request);
+                            ((DatabaseTransaction)$receiver).getSession().persist(request);
                         }
-
+                        return null;
                     }
-                }));
+                ));
 
 
 
