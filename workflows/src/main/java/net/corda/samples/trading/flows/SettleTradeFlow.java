@@ -10,6 +10,7 @@ import net.corda.core.identity.Party;
 import net.corda.core.transactions.SignedTransaction;
 import net.corda.samples.trading.states.TradeState;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -22,12 +23,12 @@ import java.util.stream.Collectors;
 public class SettleTradeFlow extends FlowLogic<SignedTransaction> {
 
     private final Party counterParty;
-    private final String settlementDate;
+    private final LocalDateTime settlementDate;
     private final UniqueIdentifier linearId;
     private Party seller;
     private Party buyer;
 
-    public SettleTradeFlow(Party counterParty, String settlementDate, UniqueIdentifier linearId) {
+    public SettleTradeFlow(Party counterParty, LocalDateTime settlementDate, UniqueIdentifier linearId) {
         this.counterParty = counterParty;
         this.settlementDate = settlementDate;
         this.linearId = linearId;
@@ -57,8 +58,7 @@ public class SettleTradeFlow extends FlowLogic<SignedTransaction> {
         if (inputState.getTradeType().equals("Sell")) { // called by seller:initiatingParty
             buyer = counterTradeState.getCounterParty();
             seller = counterTradeState.getInitiatingParty();
-        }
-        else if (inputState.getTradeType().equals("Buy")) { // called by seller:counterParty
+        } else if (inputState.getTradeType().equals("Buy")) { // called by seller:counterParty
             buyer = counterTradeState.getInitiatingParty();
             seller = counterTradeState.getCounterParty();
         }

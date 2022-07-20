@@ -23,6 +23,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
@@ -80,14 +81,14 @@ public class TradeFlowTests {
         network.startNodes();
 
         tradeState = new TradeState(partyA.getInfo().getLegalIdentities().get(0), null, "Pending Order",
-                "Sell", STOCK_SYMBOL, STOCK_PRICE, TRADING_STOCK_QUANTITY, expirationDate, "Pending",
-                tradeDate, null, LINEAR_ID);
+                "Sell", STOCK_SYMBOL, STOCK_PRICE, TRADING_STOCK_QUANTITY, LocalDateTime.parse(expirationDate + ":00.00"), "Pending",
+                LocalDateTime.parse(tradeDate), null, LINEAR_ID);
         cancelTradeState = new TradeState(partyA.getInfo().getLegalIdentities().get(0), null, "Pending Order",
-                "Sell", STOCK_SYMBOL, STOCK_PRICE, TRADING_STOCK_QUANTITY, expirationDate, "Cancelled",
-                tradeDate, null, LINEAR_ID);
+                "Sell", STOCK_SYMBOL, STOCK_PRICE, TRADING_STOCK_QUANTITY, LocalDateTime.parse(expirationDate + ":00.00"), "Cancelled",
+                LocalDateTime.parse(tradeDate), null, LINEAR_ID);
         counterTradeState = new TradeState(partyA.getInfo().getLegalIdentities().get(0), partyB.getInfo().getLegalIdentities().get(0),
-                "Pending Order", "Sell", STOCK_SYMBOL, STOCK_PRICE, TRADING_STOCK_QUANTITY, expirationDate, "Accepted",
-                tradeDate, settlementDate, LINEAR_ID);
+                "Pending Order", "Sell", STOCK_SYMBOL, STOCK_PRICE, TRADING_STOCK_QUANTITY, LocalDateTime.parse(expirationDate + ":00.00"), "Accepted",
+                LocalDateTime.parse(tradeDate), LocalDateTime.parse(settlementDate), LINEAR_ID);
     }
 
     @After

@@ -19,6 +19,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
@@ -102,8 +103,8 @@ public class Controller {
         } else {
             try {
                 TradeState tradeState = new TradeState(proxy.wellKnownPartyFromX500Name(myLegalName), null,
-                        orderType, tradeType, stockName, stockPrice, stockQuantity, expirationDate, "Pending",
-                        tradeDate, null, new UniqueIdentifier());
+                        orderType, tradeType, stockName, stockPrice, stockQuantity, LocalDateTime.parse(expirationDate + ":00.00"), "Pending",
+                        LocalDateTime.parse(tradeDate), null, new UniqueIdentifier());
 
                 SignedTransaction signedTx = proxy.startTrackedFlowDynamic(TradeFlow.Initiator.class, tradeState).getReturnValue().get();
                 System.out.println("signedTx.getId() =  :" + signedTx.getId());
@@ -145,7 +146,7 @@ public class Controller {
             try {
                 UniqueIdentifier linearId = new UniqueIdentifier(null, UUID.fromString(tradeID));
                 Party counterParty = proxy.wellKnownPartyFromX500Name(CordaX500Name.parse(counterPartyString));
-                SignedTransaction signedTx = proxy.startTrackedFlowDynamic(SettleTradeFlow.class, counterParty, settlementDate, linearId).getReturnValue().get();
+                SignedTransaction signedTx = proxy.startTrackedFlowDynamic(SettleTradeFlow.class, counterParty, LocalDateTime.parse(settlementDate), linearId).getReturnValue().get();
 
                 System.out.println("signedTx.getId() =  :" + signedTx.getId());
                 resp.addProperty("Response", "Transaction id " + signedTx.getId() + " committed to ledger.\n");

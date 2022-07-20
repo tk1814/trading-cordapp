@@ -10,7 +10,8 @@ import net.corda.samples.trading.contracts.TradeContract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 
 @BelongsToContract(TradeContract.class)
@@ -24,14 +25,14 @@ public class TradeState implements ContractState, LinearState, SchedulableState 
     public String stockName;
     public double stockPrice;
     public int stockQuantity;
-    public String expirationDate;
+    public LocalDateTime expirationDate;
     public String tradeStatus;
-    public String tradeDate;
-    public String settlementDate;
+    public LocalDateTime tradeDate;
+    public LocalDateTime settlementDate;
     private UniqueIdentifier linearId;
 
     public TradeState(Party initiatingParty, @Nullable Party counterParty, String orderType, String tradeType, String stockName,
-                      double stockPrice, int stockQuantity, String expirationDate, String tradeStatus, String tradeDate, String settlementDate,
+                      double stockPrice, int stockQuantity, LocalDateTime expirationDate, String tradeStatus, LocalDateTime tradeDate, LocalDateTime settlementDate,
                       UniqueIdentifier linearId) {
         this.initiatingParty = initiatingParty;
         if (counterParty != null) {
@@ -78,7 +79,7 @@ public class TradeState implements ContractState, LinearState, SchedulableState 
         return stockQuantity;
     }
 
-    public String getExpirationDate() {
+    public LocalDateTime getExpirationDate() {
         return expirationDate;
     }
 
@@ -86,11 +87,11 @@ public class TradeState implements ContractState, LinearState, SchedulableState 
         return tradeStatus;
     }
 
-    public String getTradeDate() {
+    public LocalDateTime getTradeDate() {
         return tradeDate;
     }
 
-    public String getSettlementDate() {
+    public LocalDateTime getSettlementDate() {
         return settlementDate;
     }
 
@@ -143,9 +144,7 @@ public class TradeState implements ContractState, LinearState, SchedulableState 
         if (tradeStatus.equals("Pending")) {
             FlowLogicRef flowLogicRef = flowLogicRefFactory.create(
                     "net.corda.samples.trading.flows.CancelTradeFlow$CancelInitiator", "Expired", linearId);
-
-            Instant expirationDatetime = Instant.parse(expirationDate + ":00.00Z");
-            return new ScheduledActivity(flowLogicRef, expirationDatetime);
+            return new ScheduledActivity(flowLogicRef, expirationDate.toInstant(ZoneOffset.UTC));
         } else
             return null;
     }
