@@ -23,7 +23,7 @@ const IssueStocks = (props) => (
             <Grid item xs={10}>
                 <TextField
                     size="small" required name="stockAmountToIssue" variant="outlined"
-                    fullWidth id="stockAmountToIssue" label="Stock Volume" type="number"
+                    fullWidth id="stockAmountToIssue" label="Volume" type="number"
                     onChange={props.stockAmountToIssueChange}
                     error={props.stockAmountToIssue === ""}
                     helperText={props.stockAmountToIssue === "" ? 'Empty field!' : ' '}

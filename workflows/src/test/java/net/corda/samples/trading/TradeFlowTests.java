@@ -49,7 +49,7 @@ public class TradeFlowTests {
 
     public final static String STOCK_SYMBOL = "TEST";
     public final static double STOCK_PRICE = 22.2;
-    public final static int ISSUING_STOCK_QUANTITY = 10;
+    public final static long ISSUING_STOCK_QUANTITY = 10;
     public final static int TRADING_STOCK_QUANTITY = 4;
     public final static String CURRENCY = "USD";
     public final static Integer ISSUING_MONEY = 300;

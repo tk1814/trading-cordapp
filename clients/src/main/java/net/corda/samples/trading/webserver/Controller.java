@@ -20,7 +20,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
@@ -79,8 +80,6 @@ public class Controller {
      */
     @RequestMapping(value = "/createTrade", method = RequestMethod.POST)
     public ResponseEntity<String> createTrade(@RequestBody String payload) {
-        System.out.println(payload);
-
         JsonObject convertedObject = new Gson().fromJson(payload, JsonObject.class);
 
         String orderType = convertedObject.get("orderType").getAsString();
@@ -125,7 +124,6 @@ public class Controller {
      */
     @RequestMapping(value = "/counterTrade", method = RequestMethod.POST)
     public ResponseEntity<String> counterTrade(@RequestBody String payload) {
-        System.out.println(payload);
         JsonObject convertedObject = new Gson().fromJson(payload, JsonObject.class);
 
         String counterPartyString = convertedObject.get("counterParty").getAsString();
@@ -164,7 +162,6 @@ public class Controller {
      */
     @RequestMapping(value = "/cancelTrade", method = RequestMethod.POST)
     public ResponseEntity<String> cancelTrade(@RequestBody String payload) {
-        System.out.println(payload);
         JsonObject convertedObject = new Gson().fromJson(payload, JsonObject.class);
 
         String tradeStatus = convertedObject.get("tradeStatus").getAsString();
@@ -194,7 +191,7 @@ public class Controller {
     public ResponseEntity<String> issueStock(@RequestBody String payload) {
         JsonObject convertedObject = new Gson().fromJson(payload, JsonObject.class);
 
-        int amount = convertedObject.get("amount").getAsInt();
+        long amount = convertedObject.get("amount").getAsLong();
         String name = convertedObject.get("name").getAsString();
         JsonObject resp = new JsonObject();
 

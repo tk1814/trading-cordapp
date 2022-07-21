@@ -55,7 +55,7 @@ class CreateTrade extends Component {
             bidPrice: "--",
             askPrice: "--",
             intervalId: null,
-            stockCodes: ["AAPL", "AMZN", "TSLA", "NFLX", "META", "GOOG", "TWTR"],
+            stockCodes: ["AAPL", "TSLA", "NFLX", "META", "GOOG", "^GSPC", "TWTR"],
         }
     }
 
@@ -355,7 +355,6 @@ class CreateTrade extends Component {
                 }
             }
             if (data !== null && isEnough) {
-                console.log(data);
                 let PORT = localStorage.getItem('port');
                 axios.post(URL + PORT + '/createTrade', data, {
                     headers: headers
@@ -389,7 +388,6 @@ class CreateTrade extends Component {
 
         // check there is enough balance and trade has not expired
         if (isEnough && currentDateTime < selectedDateTime) {
-            console.log(data)
 
             let PORT;
             if (trades[index].tradeType === "Sell") {
@@ -417,7 +415,6 @@ class CreateTrade extends Component {
             tradeStatus: "Cancelled",
             tradeID: trades[index].linearId,
         }
-        console.log(data)
         let PORT = localStorage.getItem('port');
         axios.post(URL + PORT + '/cancelTrade', data, {
             headers: headers
@@ -596,7 +593,7 @@ class CreateTrade extends Component {
                                         <Grid item xs={10}>
                                             <TextField
                                                 size="small" variant="outlined" required fullWidth id="stockQuantity"
-                                                label="Stock Volume" name="stockQuantity" type="number"
+                                                label="Volume" name="stockQuantity" type="number"
                                                 autoComplete="stockQuantity" placeholder=""
                                                 onChange={this.stockQuantityChange}
                                                 error={this.state.stockQuantity === "" || this.state.stockQuantity < 0}
@@ -643,7 +640,7 @@ class CreateTrade extends Component {
                                         <Grid item xs={10}>
                                             <TextField
                                                 size="small" variant="outlined" required fullWidth id="stockQuantity"
-                                                label="Stock Volume" name="stockQuantity" autoComplete="stockQuantity"
+                                                label="Volume" name="stockQuantity" autoComplete="stockQuantity"
                                                 placeholder="" type="number" onChange={this.stockQuantityChange}
                                                 error={this.state.stockQuantity === "" || this.state.stockQuantity < 0}
                                                 helperText={this.state.stockQuantity === "" ? 'Empty field!' : ' '}/>
