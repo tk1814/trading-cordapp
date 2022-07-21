@@ -65,6 +65,13 @@ To deploy workflows with jmeter:
     compile "$tokens_release_group:tokens-money:1.1"
  ```
 
+- build the workflows jar
+
+```
+./gradlew workflows:build
+
+```
+
 - deploy the workflows jar (this task will copy workflows.jar to the jmeter deploy folder: ~Corda-Test-Suite/extlibs):
 
   ```./gradlew deploySampler```
