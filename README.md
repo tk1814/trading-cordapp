@@ -52,7 +52,7 @@ How to run Jmeter:
 
 To install jmeter:
 create a directory: ```Corda-Test-Suite``` and unzip ```jmeter-corda-4.9.1-testsuite.zip``` here.
-create a sub directoty as the deploy folder: extlibs
+create a sub directoty as the deploy folder: ```extlibs```
 
 To deploy workflows with jmeter:
 
@@ -71,12 +71,13 @@ To deploy workflows with jmeter:
 
 
 Before build the trading application, change the workflows: build.gradle file to previous version (not include these dependencies in jar):
-    ```   
-    cordaCompile "$tokens_release_group:tokens-workflows:$tokens_release_version"
-    cordaCompile "$tokens_release_group:tokens-contracts:$tokens_release_version"
-    cordaCompile "$tokens_release_group:tokens-money:1.1"
-    cordapp project(":contracts")
-    ```
+```   
+cordaCompile "$tokens_release_group:tokens-workflows:$tokens_release_version"
+cordaCompile "$tokens_release_group:tokens-contracts:$tokens_release_version"
+cordaCompile "$tokens_release_group:tokens-money:1.1"
+cordapp project(":contracts")
+
+```
 
 Then deploynodes as usual;
 
