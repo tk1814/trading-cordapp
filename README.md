@@ -47,7 +47,6 @@ PartyA connects with webserver on port 10056.
 PartyB connects with webserver on port 10057.
 
 
-```
 How to run Jmeter:
 
 
@@ -58,34 +57,35 @@ create a sub directoty as the deploy folder: extlibs
 To deploy workflows with jmeter:
 
 - change the workflows: build.gradle file (include these dependencies in the jar):
-
+```
     compile project(":contracts")
         // Token SDK dependencies.
     compile "$tokens_release_group:tokens-workflows:$tokens_release_version"
     compile "$tokens_release_group:tokens-contracts:$tokens_release_version"
     compile "$tokens_release_group:tokens-money:1.1"
+ ```
 
 - deploy the workflows jar (this task will copy workflows.jar to the jmeter deploy folder: ~Corda-Test-Suite/extlibs):
 
-    ./gradlew deploySampler
+  ```./gradlew deploySampler```
 
 
 Before build the trading application, change the workflows: build.gradle file to previous version (not include these dependencies in jar):
+    ```   
     cordaCompile "$tokens_release_group:tokens-workflows:$tokens_release_version"
     cordaCompile "$tokens_release_group:tokens-contracts:$tokens_release_version"
     cordaCompile "$tokens_release_group:tokens-money:1.1"
     cordapp project(":contracts")
+    ```
 
 Then deploynodes as usual;
 
 After all the nodes start up,
 
 run the Jmeter in a new terminal:
-
+```
     - cd ~/Corda-Test-Suite/
 
     - java -jar jmeter-corda.jar -XadditionalSearchPaths="./extlibs/" -XjmeterProperties ./jmeter.properties
-
-
 ```
 
