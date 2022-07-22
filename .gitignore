@@ -1,4 +1,5 @@
 clients/src/main/webapp/node_modules
+clients/src/main/webapp/.eslintcache
 logs/
 clients/logs/
 build/
