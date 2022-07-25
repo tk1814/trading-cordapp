@@ -43,7 +43,6 @@ public class TradeContract implements Contract {
         List<PublicKey> requiredSigners = command.getSigners();
         CommandData commandType = command.getValue();
 
-        // TODO: reflect these exceptions in the UI
         if (commandType instanceof TradeContract.Commands.Create) {
             requireThat(require -> {
                 require.using("Transaction must have one command", tx.getCommands().size() == 1);
@@ -86,6 +85,21 @@ public class TradeContract implements Contract {
                 return null;
             });
 
+        } else if (commandType instanceof TradeContract.Commands.CancelTrade) {
+            requireThat(require -> {
+                // Generic constraints around the Trade transaction.
+                require.using("Only one output state should be created.", outputs.size() == 1);
+                TradeState output = (TradeState) outputs.get(0);
+
+                require.using("The counter party should be null.", output.counterParty == null);
+
+                // Trade-specific constraints.
+                require.using("The Trade's stock price must be non-negative.", output.stockPrice > 0);
+                require.using("The Trade's stock quantity must be positive.", output.stockQuantity > 0);
+                require.using("InitiatingParty must sign Trade", requiredSigners.contains(output.getInitiatingParty().getOwningKey()));
+                return null;
+            });
+
         } else {
             throw new IllegalArgumentException("CommandType not recognized");
         }
@@ -100,6 +114,9 @@ public class TradeContract implements Contract {
         }
 
         class CounterTrade implements Commands {
+        }
+
+        class CancelTrade implements Commands {
         }
     }
 }

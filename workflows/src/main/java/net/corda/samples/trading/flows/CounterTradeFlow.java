@@ -1,21 +1,24 @@
 package net.corda.samples.trading.flows;
 
 import co.paralleluniverse.fibers.Suspendable;
-import com.google.common.collect.*;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import net.corda.core.contracts.ContractState;
 import net.corda.core.contracts.StateAndRef;
-import net.corda.core.contracts.UniqueIdentifier;
 import net.corda.core.crypto.SecureHash;
 import net.corda.core.flows.*;
-import net.corda.core.identity.*;
-import net.corda.core.transactions.*;
-import net.corda.core.utilities.*;
-import net.corda.samples.trading.contracts.*;
-import net.corda.samples.trading.states.*;
+import net.corda.core.identity.Party;
+import net.corda.core.transactions.SignedTransaction;
+import net.corda.core.transactions.TransactionBuilder;
+import net.corda.core.utilities.ProgressTracker;
+import net.corda.samples.trading.contracts.TradeContract;
+import net.corda.samples.trading.states.TradeState;
 
-import java.security.*;
-import java.util.*;
-import java.util.stream.*;
+import java.security.PublicKey;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 import static net.corda.core.contracts.ContractsDSL.requireThat;
 
@@ -78,15 +81,15 @@ public class CounterTradeFlow {
             // Stage 1.
             progressTracker.setCurrentStep(GENERATING_TRANSACTION);
 
-            // Generate a transaction by taking the current state
+            // Generate a transaction by taking the current state and check that the incoming counterTradeState matches with the TradeState in the vault
             List<StateAndRef<TradeState>> inputTradeStateList = getServiceHub().getVaultService().queryBy(TradeState.class).getStates().stream()
-                    .filter(x -> !x.getState().getData().getInitiatingParty().equals(this.counterTradeState.getCounterParty()))
+                    .filter(x -> !x.getState().getData().getInitiatingParty().equals(counterTradeState.getCounterParty()))
                     .filter(x -> x.getState().getData().getTradeStatus().equalsIgnoreCase("Pending"))
-                    .filter(x -> x.getState().getData().getTradeId().equals(this.counterTradeState.getTradeId()))
+                    .filter(x -> x.getState().getData().getLinearId().equals(counterTradeState.getLinearId()))
                     .collect(Collectors.toList());
 
             if (inputTradeStateList.isEmpty()) {
-                throw new RuntimeException("Trade state with trade ID: " + this.counterTradeState.getTradeId() + " was not found in the vault.");
+                throw new RuntimeException("Trade state with trade ID: " + counterTradeState.getLinearId() + " was not found in the vault.");
             }
             StateAndRef<TradeState> inputTradeState = inputTradeStateList.get(0);
 

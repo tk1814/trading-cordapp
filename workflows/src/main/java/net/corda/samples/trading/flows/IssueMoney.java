@@ -47,6 +47,6 @@ public class IssueMoney extends FlowLogic<String> {
         // Use the build-in flow, IssueTokens, to issue the required amount to the recipient
         SignedTransaction stx = subFlow(new IssueTokens(ImmutableList.of(fungibleToken), ImmutableList.of(recipient)));
         return "\nIssued to " + recipient.getName().getOrganisation() + " " + this.quantity + " "
-                + this.currency + " for stock issuance." + "\nTransaction ID: " + stx.getId();
+                + this.currency + ". Transaction ID: " + stx.getId();
     }
 }

@@ -62,7 +62,7 @@ public class QueryTokens {
                         + evolvableTokenType.getIssuer().getName().getOrganisation() + "\n";
                 stockAmountsAndNames.add(amount.getQuantity() + "=" + evolvableTokenType.getName());
             }
-            System.out.println(result);
+            // System.out.println(result);
             return stockAmountsAndNames;
         }
     }
