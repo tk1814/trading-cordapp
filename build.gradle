@@ -195,7 +195,7 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
         notary = [
                 validating: false,
                 serviceLegalName: "O=BFT,L=Zurich,C=CH",
-                className:"net.corda..BFTNotary",
+                className:"net.corda.samples.trading.notaries.BFTNotary",
                 extraConfig:
                         [bft: [
                                 replicaId: 0,
