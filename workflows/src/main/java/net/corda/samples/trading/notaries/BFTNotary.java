@@ -1,10 +1,12 @@
 package net.corda.samples.trading.notaries;
 
+import tbftsmart.tom.MessageContext;
 import co.paralleluniverse.fibers.Suspendable;
 import com.google.common.util.concurrent.SettableFuture;
 import com.typesafe.config.Config;
 import kotlin.NoWhenBranchMatchedException;
 import kotlin.Pair;
+import kotlin.Suppress;
 import kotlin.jvm.internal.Intrinsics;
 import net.corda.core.contracts.StateRef;
 import net.corda.core.contracts.TimeWindow;
@@ -21,9 +23,9 @@ import net.corda.node.services.api.ServiceHubInternal;
 import net.corda.node.services.config.NotaryConfig;
 import net.corda.node.services.transactions.PersistentUniquenessProvider;
 import net.corda.node.utilities.AppendOnlyPersistentMap;
+import net.corda.samples.trading.notaries.BFTSMart;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
@@ -32,12 +34,16 @@ import java.io.*;
 import java.net.SocketException;
 import java.security.PublicKey;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
+import java.util.logging.Logger;
 
-public final class BFTNotary extends NotaryService {
-    private final NotaryConfig notaryConfig;
+public  class BFTNotary extends NotaryService {
+    private  NotaryConfig notaryConfig;
 
     private BFTConfig bftConfig;
 
@@ -50,12 +56,12 @@ public final class BFTNotary extends NotaryService {
     private ServiceFlow serviceFlow;
 
     @NotNull
-    private final ServiceHubInternal services;
+    private  ServiceHubInternal services;
 
     @NotNull
-    private final PublicKey notaryIdentityKey;
+    private  PublicKey notaryIdentityKey;
 
-    //private static final Logger log = contextLogger();
+    //private static  Logger log = contextLogger();
 
     public BFTNotary(@NotNull ServiceHubInternal services, @NotNull PublicKey notaryIdentityKey) throws Throwable {
 
@@ -66,18 +72,18 @@ public final class BFTNotary extends NotaryService {
 
 //                this.bftConfig = this.notaryConfig.getBftSMaRt();
 
-//            Config extraConfig = Objects.requireNonNull(
-//                    this.notaryConfig.getExtraConfig(),
-//                    "required `extraConfig.bft` key in notary config");
-            Config extraConfig = this.notaryConfig.getExtraConfig();
-            if(extraConfig==null){
-                List<NetworkHostAndPort> tmp = new ArrayList<NetworkHostAndPort>() ;
-                tmp.add(new NetworkHostAndPort("localhost",10210));
-                this.bftConfig = new BFTConfig(0, tmp, true, false);
-            }else{
-                this.bftConfig = new BFTConfig(extraConfig);
-            }
-
+            Config extraConfig = Objects.requireNonNull(
+                    this.notaryConfig.getExtraConfig(),
+                    "required `extraConfig.bft` key in notary config");
+//            Config extraConfig = this.notaryConfig.getExtraConfig();
+//            if(extraConfig==null){
+//                List<NetworkHostAndPort> tmp = new ArrayList<NetworkHostAndPort>() ;
+//                tmp.add(new NetworkHostAndPort("127.0.0.1",11000));
+//                this.bftConfig = new BFTConfig(0, tmp, true, false);
+//            }else{
+//                this.bftConfig = new BFTConfig(extraConfig);
+//            }
+            this.bftConfig = new BFTConfig(extraConfig);
 
 
             this.cluster = makeBFTCluster(this.notaryIdentityKey, this.bftConfig);
@@ -87,10 +93,10 @@ public final class BFTNotary extends NotaryService {
             //Throwable throwable = (Throwable)null;
 
             int replicaId = this.bftConfig.getReplicaId();
-            BFTConfigInternal configHandle = bftConfigInternal.handle();
-            Replica replica = new Replica(configHandle, replicaId, this::createMap, this.services, notaryIdentityKey);
+            //BFTConfigInternal configHandle = bftConfigInternal.handle();
+            Replica replica = new Replica(bftConfigInternal, replicaId, this.services, notaryIdentityKey);
             this.replicaHolder.set(replica);
-            this.client = new BFTSMart.Client(configHandle, replicaId, this.cluster, this);
+            this.client = new BFTSMart.Client(bftConfigInternal, replicaId, this.cluster, this);
 
         //TODO
 //                Thread thread = new Thread(""){
@@ -106,10 +112,9 @@ public final class BFTNotary extends NotaryService {
         }
     }
 
-
     @Entity
-    @Table(name = "node_notary_committed_states")
-    static final class CommittedState extends PersistentUniquenessProvider.BaseComittedState {
+    @Table(name = "node_bft_committed_states")
+    static class CommittedState extends PersistentUniquenessProvider.BaseComittedState {
         public PersistentStateRef id;
         public String consumingTxHash;
 
@@ -141,13 +146,14 @@ public final class BFTNotary extends NotaryService {
     }
 
 
+    @Suppress(names = "MagicNumber") // database column length
     @Entity
-    @Table(name = "node_notary_committed_txs")
+    @Table(name = "node_bft_committed_txs")
     public static class CommittedTransaction {
         @Id
         @Column(name = "transaction_id", nullable = false, length = 144)
         @NotNull
-        private final String transactionId;
+        private String transactionId;
 
 
         public CommittedTransaction(@NotNull String transactionId) {
@@ -160,10 +166,10 @@ public final class BFTNotary extends NotaryService {
         }
     }
 
-    private static final class Replica extends BFTSMart.Replica {
+    private static  class Replica extends BFTSMart.Replica {
 
-        public Replica(@NotNull BFTConfigInternal config, int replicaId, @NotNull Callable<AppendOnlyPersistentMap<StateRef, SecureHash, CommittedState, ? extends PersistentStateRef>> createMap, @NotNull ServiceHubInternal services, @NotNull PublicKey notaryIdentityKey) throws SocketException, InterruptedException {
-            super(config, replicaId, createMap, services, notaryIdentityKey);
+        public Replica(@NotNull BFTConfigInternal config, @NotNull int replicaId, @NotNull ServiceHubInternal services, @NotNull PublicKey notaryIdentityKey) throws SocketException, InterruptedException {
+            super(config, replicaId, services, notaryIdentityKey);
         }
 
         @NotNull
@@ -198,7 +204,8 @@ public final class BFTNotary extends NotaryService {
             }
         }
 
-        private final BFTSMart.ReplicaResponse verifyAndCommitTx(CoreTransaction transaction, Party callerIdentity, NotarisationRequestSignature requestSignature) throws IOException {
+
+        private  BFTSMart.ReplicaResponse verifyAndCommitTx(CoreTransaction transaction, Party callerIdentity, NotarisationRequestSignature requestSignature) throws IOException {
             BFTSMart.ReplicaResponse response = null;
 
             SecureHash id = transaction.getId();
@@ -219,27 +226,38 @@ public final class BFTNotary extends NotaryService {
         }
 
 
-        private final void verifyRequest(BFTSMart.CommitRequest commitRequest) {
+        private  void verifyRequest(BFTSMart.CommitRequest commitRequest) {
             CoreTransaction transaction = commitRequest.getPayload().getCoreTransaction();
             NotarisationRequest notarisationRequest = new NotarisationRequest(transaction.getInputs(), transaction.getId());
             NotaryUtilsKt.verifySignature(notarisationRequest, commitRequest.getPayload().getRequestSignature(), commitRequest.getCallerIdentity());
         }
+
+        @Override
+        public byte[][] appExecuteBatch(byte[][] command, MessageContext[] messageContexts, boolean b) {
+            List<byte[]> res = new ArrayList<>();
+
+            for(byte[] c:command){
+                res.add(this.executeCommand(c));
+            }
+
+            return (byte[][]) res.toArray();
+        }
     }
 
-    private static final class ServiceFlow extends FlowLogic<Void> {
+    private static  class ServiceFlow extends FlowLogic<Void> {
         @NotNull
         private FlowSession otherSideSession;
 
         @NotNull
-        private final BFTNotary service;
+        private  BFTNotary service;
 
         @NotNull
-        public final FlowSession getOtherSideSession() {
+        public  FlowSession getOtherSideSession() {
             return this.otherSideSession;
         }
 
         @NotNull
-        public final BFTNotary getService() {
+        public  BFTNotary getService() {
             return this.service;
         }
 
@@ -267,7 +285,7 @@ public final class BFTNotary extends NotaryService {
             return null;
         }
 
-        private final NotarisationResponse commit(NotarisationPayload payload) throws Throwable {
+        private  NotarisationResponse commit(NotarisationPayload payload) throws Throwable {
             BFTSMart.ClusterResponse response = this.service.commitTransaction(payload, this.otherSideSession.getCounterparty());
             if (response instanceof BFTSMart.ClusterResponse.Error) {
                 NotaryError responseError = ((BFTSMart.ClusterResponse.Error) response).getErrors().get(0).verified();
@@ -296,7 +314,7 @@ public final class BFTNotary extends NotaryService {
     }
 
 
-    private final BFTSMart.Cluster makeBFTCluster(PublicKey notaryKey, BFTConfig bftConfig) {
+    private  BFTSMart.Cluster makeBFTCluster(PublicKey notaryKey, BFTConfig bftConfig) {
         return new BFTSMart.Cluster(){
 
             @Override
@@ -307,26 +325,25 @@ public final class BFTNotary extends NotaryService {
     }
 
 
-    public final void waitUntilReplicaHasInitialized() {
+    public  void waitUntilReplicaHasInitialized() {
         //replicaHolder.getOrThrow();
     }
 
     @NotNull
-    public final BFTSMart.ClusterResponse commitTransaction(@NotNull NotarisationPayload payload, @NotNull Party otherSide) throws InterruptedException, IOException, ClassNotFoundException {
+    public  BFTSMart.ClusterResponse commitTransaction(@NotNull NotarisationPayload payload, @NotNull Party otherSide) throws InterruptedException, IOException, ClassNotFoundException {
         Intrinsics.checkParameterIsNotNull(payload, "payload");
         Intrinsics.checkParameterIsNotNull(otherSide, "otherSide");
         return this.client.commitTransaction(payload, otherSide);
     }
 
     @NotNull
-    @Override
     public FlowLogic<Void> createServiceFlow(@NotNull FlowSession otherPartySession) {
         Intrinsics.checkParameterIsNotNull(otherPartySession, "otherPartySession");
         return new ServiceFlow(otherPartySession, this);
     }
 
 
-    private final AppendOnlyPersistentMap<StateRef, SecureHash, CommittedState, PersistentStateRef> createMap() {
+    private AppendOnlyPersistentMap<StateRef, SecureHash, CommittedState, PersistentStateRef> createMap() {
         return new AppendOnlyPersistentMap(
                 getServices().getCacheFactory(),
                 "BFTNonValidatingNotaryService_transactions",

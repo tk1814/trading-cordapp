@@ -1,16 +1,17 @@
 package net.corda.samples.trading.notaries;
 
-import bftsmart.communication.ServerCommunicationSystem;
-import bftsmart.communication.client.netty.NettyClientServerSession;
-import bftsmart.statemanagement.strategy.StandardStateManager;
-import bftsmart.tom.MessageContext;
-import bftsmart.tom.ServiceProxy;
-import bftsmart.tom.ServiceReplica;
-import bftsmart.tom.core.TOMLayer;
-import bftsmart.tom.core.messages.TOMMessage;
-import bftsmart.tom.server.RequestVerifier;
-import bftsmart.tom.server.defaultservices.DefaultRecoverable;
-import bftsmart.tom.util.Extractor;
+import tbftsmart.communication.ServerCommunicationSystem;
+import tbftsmart.communication.client.netty.NettyClientServerSession;
+import tbftsmart.statemanagement.strategy.StandardStateManager;
+import tbftsmart.tom.MessageContext;
+import tbftsmart.tom.ServiceProxy;
+import tbftsmart.tom.ServiceReplica;
+import tbftsmart.tom.core.TOMLayer;
+import tbftsmart.tom.core.messages.TOMMessage;
+import tbftsmart.tom.server.RequestVerifier;
+import tbftsmart.tom.server.defaultservices.DefaultRecoverable;
+import tbftsmart.tom.server.defaultservices.DefaultReplier;
+import tbftsmart.tom.util.Extractor;
 import kotlin.NotImplementedError;
 import kotlin.Pair;
 import kotlin.TypeCastException;
@@ -51,6 +52,8 @@ import java.nio.file.Path;
 import java.security.PublicKey;
 import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public  class BFTSMart {
     //public static BFTSMart INSTANCE = new BFTSMart();
@@ -97,7 +100,7 @@ public  class BFTSMart {
             private  SignedData<NotaryError> error;
 
             @NotNull
-            public SignedData<NotaryError> getError() {
+            public  SignedData<NotaryError> getError() {
                 return this.error;
             }
 
@@ -120,7 +123,7 @@ public  class BFTSMart {
 
         public static  class Signature extends ReplicaResponse {
             @NotNull
-            private TransactionSignature txSignature;
+            private  TransactionSignature txSignature;
 
             @NotNull
             public  TransactionSignature getTxSignature() {
@@ -231,6 +234,11 @@ public  class BFTSMart {
             }
             return true;
         }
+
+        @Override
+        public boolean isValidRequest(TOMMessage tomMessage) {
+            return false;
+        }
     }
 
 
@@ -251,9 +259,9 @@ public  class BFTSMart {
             this.clientId = clientId;
             this.cluster = cluster;
             this.notaryService = notaryService;
-            this.proxy = new ServiceProxy(this.clientId, config.getPath().toString(), buildResponseComparator(), buildExtractor());
+            this.proxy = new ServiceProxy(this.clientId, config.getPath().toString(), buildResponseComparator(), buildExtractor(),null);
             if (this.proxy.getCommunicationSystem() == null)
-                throw new TypeCastException("null cannot be cast to non-null type bftsmart.communication.client.netty.NettyClientServerCommunicationSystemClientSide");
+                throw new TypeCastException("null cannot be cast to non-null type tbftsmart.communication.client.netty.NettyClientServerCommunicationSystemClientSide");
             this.sessionTable = (Map<Integer, NettyClientServerSession>)InternalUtils.declaredField(this.proxy.getCommunicationSystem(), "sessionTable").getValue();
         }
 
@@ -400,7 +408,7 @@ public  class BFTSMart {
                     }
 
                     TOMMessage reply = replies[lastReceived];
-                    return new TOMMessage(reply.getSender(),reply.getSession(),reply.getSequence(),bytes,reply.getViewID());
+                    return new TOMMessage(reply.getSender(),reply.getSession(),reply.getSequence(),reply.getOperationId(),bytes,reply.getViewID(),reply.getReqType());
                 }
             };
         }
@@ -412,8 +420,8 @@ public  class BFTSMart {
 
         private  DeclaredField<ServerCommunicationSystem> csField;
 
-        public CordaServiceReplica(int replicaId, @NotNull Path configHome, @NotNull DefaultRecoverable owner) {
-            super(replicaId, configHome.toString(), false, owner, owner,new Verifier());
+        public CordaServiceReplica(@NotNull int replicaId, @NotNull Path configHome, @NotNull DefaultRecoverable owner) {
+            super(replicaId, configHome.toString(), owner, owner,null, new DefaultReplier(),null);
             this.tomLayerField = InternalUtils.declaredField(this, Reflection.getOrCreateKotlinClass(ServiceReplica.class), "tomLayer");
             this.csField = InternalUtils.declaredField(this, Reflection.getOrCreateKotlinClass(ServiceReplica.class), "cs");
         }
@@ -446,7 +454,7 @@ public  class BFTSMart {
         private  PublicKey notaryIdentityKey;
 
 
-        public Replica(@NotNull BFTConfigInternal config, int replicaId, Callable<AppendOnlyPersistentMap<StateRef, SecureHash, BFTNotary.CommittedState, ? extends PersistentStateRef>> createMap, @NotNull ServiceHubInternal services, @NotNull PublicKey notaryIdentityKey) throws SocketException, InterruptedException {
+        public Replica(@NotNull BFTConfigInternal config, @NotNull int replicaId, @NotNull ServiceHubInternal services, @NotNull PublicKey notaryIdentityKey) throws SocketException, InterruptedException {
             this.config = config;
             this.services = services;
             this.notaryIdentityKey = notaryIdentityKey;
@@ -468,7 +476,20 @@ public  class BFTSMart {
             };
 
 
-            this.commitLog = (AppendOnlyPersistentMap<StateRef, SecureHash, BFTNotary.CommittedState, PersistentStateRef>) this.services.getDatabase().transaction((Function1)createMap);
+            this.commitLog = new AppendOnlyPersistentMap(
+                    getServices().getCacheFactory(),
+                    "BFTNonValidatingNotaryService_transactions",
+                    (it)->{return new PersistentStateRef(((StateRef)it).getTxhash().toString(), ((StateRef)it).getIndex());},
+                    (it)->{
+                        String txId = ((BFTNotary.CommittedState)it).id.getTxId();
+                        int index = ((BFTNotary.CommittedState)it).id.getIndex();
+                        return new Pair(new StateRef(SecureHash.create(txId), index), SecureHash.create(((BFTNotary.CommittedState)it).consumingTxHash));},
+                    (stateRef, id)->{
+                        return new BFTNotary.CommittedState(
+                                new PersistentStateRef(((StateRef) stateRef).getTxhash().toString(), ((StateRef) stateRef).getIndex()),
+                                id.toString());
+                    },
+                    BFTNotary.CommittedState.class);
 
 
             config.waitUntilReplicaWillNotPrintStackTrace(replicaId);
@@ -511,17 +532,6 @@ public  class BFTSMart {
             return null;
         }
 
-        @NotNull
-        @Override
-        public byte[][] appExecuteBatch(@NotNull byte[][] command, @NotNull MessageContext[] mcs) {
-            List<byte[]> res = new ArrayList<>();
-
-            for(byte[] c:command){
-                res.add(this.executeCommand(c));
-            }
-
-            return (byte[][]) res.toArray();
-        }
 
         private  void checkConflict(LinkedHashMap<StateRef, StateConsumptionDetails> conflictingStates, List<StateRef> states, StateConsumptionDetails.ConsumedStateType type) {
 
@@ -658,7 +668,7 @@ public  class BFTSMart {
 
                 public  byte[] invoke(@NotNull DatabaseTransaction $receiver) {
                     Intrinsics.checkParameterIsNotNull($receiver, "$receiver");
-                    List<Pair<StateRef, SecureHash>> var2 =  (List<Pair<StateRef, SecureHash>>)Replica.this.commitLog.getAllPersisted();
+                    List<Pair<StateRef, SecureHash>> var2 =  (List<Pair<StateRef, SecureHash>>)Replica.this.commitLog.getAllPersisted().collect(Collectors.toList());
 
                     for (Pair<StateRef, SecureHash> pair : var2 ){
                         committedStates.put(pair.component1(),pair.component2());
