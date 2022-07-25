@@ -49,12 +49,8 @@ buildscript { //properties that you need to build the project
 
         classpath "com.sendgrid:sendgrid-java:4.7.0"
         classpath "com.sendgrid:java-http-client:4.3.6"
-        configurations.all {
-            exclude group: "com.github.bft-smart", module: 'library'
-        }
 
-
-        classpath fileTree (dir:'libs', include:['*.jar'])
+        classpath fileTree (dir:'lib', include:['*.jar'])
     }
 }
 
@@ -172,7 +168,7 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
         throw new IllegalArgumentException("GradleException: This build must be run with java 8") //GradleException("This build must be run with java 8")
     }
 
-    def clusterAddresses = ["localhost:11000", "localhost:11010", "localhost:11020", "localhost:11030", "localhost:11040"]
+    def clusterAddresses = ["localhost:11000", "localhost:11010", "localhost:11020", "localhost:11030"]
     nodeDefaults {
         projectCordapp { deploy = true }
         cordapp "$tokens_release_group:tokens-money:1.1"
