@@ -31,9 +31,9 @@ import java.util.stream.Collectors;
 public class CreateAndIssueStock extends FlowLogic<String> {
 
     private final String name;
-    private final int issueVol;
+    private final Long issueVol;
 
-    public CreateAndIssueStock(String name, int issueVol) {
+    public CreateAndIssueStock(String name, Long issueVol) {
         this.name = name;
         this.issueVol = issueVol;
     }
@@ -76,6 +76,6 @@ public class CreateAndIssueStock extends FlowLogic<String> {
 
         // Finally, use the build-in flow to issue the stock tokens. Observer parties will record a copy of the transaction
         SignedTransaction stx = subFlow(new IssueTokens(ImmutableList.of(stockToken), observers));
-        return "\nGenerated " + this.issueVol + " stocks." + "\nTransaction ID: " + stx.getId();
+        return "\nGenerated " + this.issueVol + " stocks." + " Transaction ID: " + stx.getId();
     }
 }

@@ -66,7 +66,7 @@ public class DvPInitiatorFlow extends FlowLogic<String> {
         // Initiate a flow session with the buyer to send the stock price and transfer of the fiat currency
         FlowSession buyerSession = initiateFlow(buyer);
 
-        TokenType tokenType = FiatCurrency.Companion.getInstance("GBP");
+        TokenType tokenType = FiatCurrency.Companion.getInstance("USD");
         Amount<TokenType> costPrice = Amount.fromDecimal(new BigDecimal(cost), tokenType, RoundingMode.HALF_UP);
 
         // Send the stock price to the buyer

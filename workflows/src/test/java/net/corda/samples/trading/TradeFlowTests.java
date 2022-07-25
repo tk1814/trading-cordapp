@@ -23,6 +23,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
@@ -39,6 +40,8 @@ public class TradeFlowTests {
     protected StartedMockNode partyA;
     protected StartedMockNode partyB;
     protected String expirationDate;
+    protected String tradeDate;
+    protected String settlementDate;
     protected Party notaryParty;
 
     public static TestIdentity PARTY_A = new TestIdentity(new CordaX500Name("PartyA", "TestVillage", "US"));
@@ -46,14 +49,15 @@ public class TradeFlowTests {
 
     public final static String STOCK_SYMBOL = "TEST";
     public final static double STOCK_PRICE = 22.2;
-    public final static int ISSUING_STOCK_QUANTITY = 10;
+    public final static long ISSUING_STOCK_QUANTITY = 10;
     public final static int TRADING_STOCK_QUANTITY = 4;
-    public final static String CURRENCY = "GBP";
+    public final static String CURRENCY = "USD";
     public final static Integer ISSUING_MONEY = 300;
     public final static UniqueIdentifier LINEAR_ID = new UniqueIdentifier(null, UUID.fromString("6231f549-9c1b-041f-90dd-1dc728fcbafc"));
-    public final static TokenType fiatTokenType = FiatCurrency.Companion.getInstance("GBP");
+    public final static TokenType fiatTokenType = FiatCurrency.Companion.getInstance("USD");
     public static TradeState tradeState = null;
     public static TradeState counterTradeState = null;
+    public static TradeState cancelTradeState = null;
 
     @Before
     public void setup() {
@@ -72,12 +76,19 @@ public class TradeFlowTests {
         notary = network.getNotaryNodes().get(0);
         notaryParty = notary.getInfo().getLegalIdentities().get(0);
         expirationDate = "2023-03-03T03:03";
+        tradeDate = "2022-07-07T07:07";
+        settlementDate = "2022-08-28T08:08";
         network.startNodes();
 
         tradeState = new TradeState(partyA.getInfo().getLegalIdentities().get(0), null, "Pending Order",
-                "Sell", STOCK_SYMBOL, STOCK_PRICE, TRADING_STOCK_QUANTITY, expirationDate, "Pending", LINEAR_ID);
+                "Sell", STOCK_SYMBOL, STOCK_PRICE, TRADING_STOCK_QUANTITY, LocalDateTime.parse(expirationDate + ":00.00"), "Pending",
+                LocalDateTime.parse(tradeDate), null, LINEAR_ID);
+        cancelTradeState = new TradeState(partyA.getInfo().getLegalIdentities().get(0), null, "Pending Order",
+                "Sell", STOCK_SYMBOL, STOCK_PRICE, TRADING_STOCK_QUANTITY, LocalDateTime.parse(expirationDate + ":00.00"), "Cancelled",
+                LocalDateTime.parse(tradeDate), null, LINEAR_ID);
         counterTradeState = new TradeState(partyA.getInfo().getLegalIdentities().get(0), partyB.getInfo().getLegalIdentities().get(0),
-                "Pending Order", "Sell", STOCK_SYMBOL, STOCK_PRICE, TRADING_STOCK_QUANTITY, expirationDate, "Accepted", LINEAR_ID);
+                "Pending Order", "Sell", STOCK_SYMBOL, STOCK_PRICE, TRADING_STOCK_QUANTITY, LocalDateTime.parse(expirationDate + ":00.00"), "Accepted",
+                LocalDateTime.parse(tradeDate), LocalDateTime.parse(settlementDate), LINEAR_ID);
     }
 
     @After
@@ -232,5 +243,39 @@ public class TradeFlowTests {
         // Check seller's money balance
         Amount<TokenType> receivedMoneyAmount = QueryUtilities.tokenBalance(partyA.getServices().getVaultService(), fiatTokenType);
         assertEquals(receivedMoneyAmount.getQuantity() / 100.0, TRADING_STOCK_QUANTITY * STOCK_PRICE, 0.01);
+    }
+
+    @Test
+    public void cancelTradeFlowTest() throws ExecutionException, InterruptedException {
+
+        // Issue Stock to seller
+        CordaFuture<String> future = partyA.startFlow(new CreateAndIssueStock(STOCK_SYMBOL, ISSUING_STOCK_QUANTITY));
+        network.runNetwork();
+        future.get();
+
+        // Create trade to sell stocks
+        CordaFuture<SignedTransaction> futureA = partyA.startFlow(new TradeFlow.Initiator(tradeState));
+        network.runNetwork();
+        futureA.get();
+
+        // Cancel trade
+        CordaFuture<SignedTransaction> futureCancelTrade = partyA.startFlow(new CancelTradeFlow.CancelInitiator(cancelTradeState.getTradeStatus(), cancelTradeState.getLinearId()));
+        network.runNetwork();
+        SignedTransaction stx = futureCancelTrade.get();
+        SecureHash stxID = stx.getId();
+
+        // Check if initiator and observer have recorded the transaction
+        SignedTransaction initiatorTx = partyA.getServices().getValidatedTransactions().getTransaction(stxID);
+        SignedTransaction observerPartyTx = partyB.getServices().getValidatedTransactions().getTransaction(stxID);
+        assertNotNull(initiatorTx);
+        assertNotNull(observerPartyTx);
+        assertEquals(initiatorTx, observerPartyTx);
+
+        // Retrieve cancelled trade state from observer's vault
+        List<StateAndRef<TradeState>> remainingTradeStatesPages = partyB.getServices().getVaultService().queryBy(TradeState.class).getStates();
+        TradeState remainingTradeState = remainingTradeStatesPages.get(0).getState().getData();
+
+        // Check cancelled trade state
+        assertEquals(remainingTradeState.toString(), cancelTradeState.toString());
     }
 }
