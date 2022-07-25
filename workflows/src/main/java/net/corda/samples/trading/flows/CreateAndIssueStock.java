@@ -76,6 +76,7 @@ public class CreateAndIssueStock extends FlowLogic<String> {
 
         // Finally, use the build-in flow to issue the stock tokens. Observer parties will record a copy of the transaction
         SignedTransaction stx = subFlow(new IssueTokens(ImmutableList.of(stockToken), observers));
+        subFlow(new CreateTradeQueueFlow.CreateTradeQueueInitiator(name));
         return "\nGenerated " + this.issueVol + " stocks." + "\nTransaction ID: " + stx.getId();
     }
 }
