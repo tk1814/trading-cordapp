@@ -153,7 +153,7 @@ class BFTConfig {
        this.exposeRaces = exposeRaces;
        if (this.replicaId < 0) {
            String str = "replicaId cannot be negative";
-           throw (Throwable)new IllegalArgumentException(str.toString());
+           throw new IllegalArgumentException(str.toString());
        }
    }
 

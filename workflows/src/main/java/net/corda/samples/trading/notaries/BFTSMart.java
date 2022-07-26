@@ -55,7 +55,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public  class BFTSMart {
-    //public static BFTSMart INSTANCE = new BFTSMart();
 
     @CordaSerializable
     public static  class CommitRequest implements Serializable {

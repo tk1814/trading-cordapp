@@ -213,7 +213,6 @@ public  class BFTNotary extends NotaryService {
             SecureHash id = transaction.getId();
             List<StateRef> inputs = transaction.getInputs();
             List<StateRef> references = transaction.getReferences();
-            Party notary = transaction.getNotary();
 
             TimeWindow timeWindow = null;
 

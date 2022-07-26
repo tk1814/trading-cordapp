@@ -93,15 +93,6 @@ dependencies {
     cordapp project(":contracts")
 
     ext.jmeterVersion = 3.3
-    //ext.cordaVersion = "4.8"
-    //ext.cordaOsVersion = "4.8"
-    // Kotlin dependency for the Kotlin example
-    //compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
-    // The jmeter-corda package has the base classes that form the glue between JMeter and Corda. All Corda performance
-    // samplers need to depend on thi
-    //compile group: "com.r3.corda", name: "jmeter-corda", version: "4.8"
-    // Any sampler needs to depend on Corda RPC to invoke flows - the RPC client is used to actually drive the node
-    //compile group: "com.r3.corda", name: "corda-rpc", version: cordaVersion
     // Dependency on Apache JMeter
     compile group: 'org.apache.jmeter', name: 'ApacheJMeter_java', version: jmeterVersion // 'compile' because we extend Java sampler.
 
@@ -121,7 +112,6 @@ task deploySampler {
     doLast {
         project.sync {
             from "build/libs"
-            //from "../workflows/build/libs"
             into "/Users/lanlan/Corda-Test-Suite/extlibs/"
             include "*.jar"
         }
