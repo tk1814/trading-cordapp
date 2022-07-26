@@ -85,6 +85,10 @@ public class MatchOrdersFlow {
 
             SignedTransaction signedTransaction = subFlow(new FinalityFlow(selfSignedTransaction, allSessions));
 
+            for (MatchRecord matchRecord : matchResults) {
+                subFlow(new SettleTradeFlow(matchRecord));
+            }
+
             return matchResults;
         }
 
