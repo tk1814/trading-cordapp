@@ -108,6 +108,12 @@ const TradeTables = (props) => (
                                             fullWidth variant="contained" color="primary"
                                             onClick={() => props.counterTradeButton(index)}>Accept </Button>
                                 </TableCell>}
+                                {(row.initiatingParty === props.getPartyfromPort()) &&
+                                <TableCell component="th" scope="row">
+                                    <Button size='small' style={{marginBottom: 5}} type="submit"
+                                            fullWidth variant="outlined" color="error"
+                                            onClick={() => props.cancelTradeButton(index)}>Cancel</Button>
+                                </TableCell>}
                             </TableRow>
                         ))}
                     </TableBody>
