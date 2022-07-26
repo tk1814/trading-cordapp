@@ -1,5 +1,8 @@
 package net.corda.samples.trading.notaries;
 
+import net.corda.core.flows.*;
+import net.corda.core.serialization.SerializationAPIKt;
+import net.corda.core.serialization.SerializationFactory;
 import tbftsmart.communication.ServerCommunicationSystem;
 import tbftsmart.communication.client.netty.NettyClientServerSession;
 import tbftsmart.statemanagement.strategy.StandardStateManager;
@@ -21,10 +24,6 @@ import kotlin.jvm.internal.Reflection;
 import net.corda.core.contracts.StateRef;
 import net.corda.core.contracts.TimeWindow;
 import net.corda.core.crypto.*;
-import net.corda.core.flows.NotarisationPayload;
-import net.corda.core.flows.NotarisationRequestSignature;
-import net.corda.core.flows.NotaryError;
-import net.corda.core.flows.StateConsumptionDetails;
 import net.corda.core.identity.CordaX500Name;
 import net.corda.core.identity.Party;
 import net.corda.core.internal.DeclaredField;
@@ -59,7 +58,7 @@ public  class BFTSMart {
     //public static BFTSMart INSTANCE = new BFTSMart();
 
     @CordaSerializable
-    public static  class CommitRequest {
+    public static  class CommitRequest implements Serializable {
         @NotNull
         private  NotarisationPayload payload;
 
@@ -93,7 +92,7 @@ public  class BFTSMart {
     }
 
     @CordaSerializable
-    public static abstract class ReplicaResponse {
+    public static abstract class ReplicaResponse implements Serializable {
 
         public static  class Error extends ReplicaResponse {
             @NotNull
@@ -160,7 +159,7 @@ public  class BFTSMart {
     }
 
     @CordaSerializable
-    public static abstract class ClusterResponse {
+    public static abstract class ClusterResponse  implements Serializable{
 
         public static  class Error extends ClusterResponse {
             @NotNull
@@ -242,7 +241,7 @@ public  class BFTSMart {
     }
 
 
-    public static  class Client extends SingletonSerializeAsToken {
+    public static class Client extends SingletonSerializeAsToken {
         private  ServiceProxy proxy;
 
         private  Map<Integer, NettyClientServerSession> sessionTable;
@@ -263,6 +262,7 @@ public  class BFTSMart {
             if (this.proxy.getCommunicationSystem() == null)
                 throw new TypeCastException("null cannot be cast to non-null type tbftsmart.communication.client.netty.NettyClientServerCommunicationSystemClientSide");
             this.sessionTable = (Map<Integer, NettyClientServerSession>)InternalUtils.declaredField(this.proxy.getCommunicationSystem(), "sessionTable").getValue();
+
         }
 
         public void dispose() {
@@ -286,26 +286,26 @@ public  class BFTSMart {
         }
 
         @NotNull
-        public  ClusterResponse commitTransaction(@NotNull NotarisationPayload payload, @NotNull Party otherSide) throws InterruptedException, IOException, ClassNotFoundException {
+        public  ClusterResponse commitTransaction(@NotNull NotarisationPayload payload, @NotNull Party otherSide) throws Exception {
             awaitClientConnectionToCluster();
             this.cluster.waitUntilAllReplicasHaveInitialized();
             CommitRequest commitRequest = new CommitRequest(payload, otherSide);
 
-            ByteArrayOutputStream bos = new ByteArrayOutputStream();
-            ObjectOutput out = new ObjectOutputStream(bos);
-            out.writeObject(commitRequest);
-            out.flush();
-            bos.flush();
-            out.close();
-            bos.close();
-            byte[] requestBytes = bos.toByteArray();
-            byte[] responseBytes = this.proxy.invokeOrdered(requestBytes);
+            byte[] request = SerializationAPIKt.serialize(commitRequest,SerializationFactory.Companion.getDefaultFactory(), SerializationFactory.Companion.getDefaultFactory().getDefaultContext()).getBytes();
+
+            byte[] responseBytes = this.proxy.invokeOrdered(request);
 
             ByteArrayInputStream bis = new ByteArrayInputStream(responseBytes);
             ObjectInput in = new ObjectInputStream(bis);
+
             ClusterResponse response = (ClusterResponse)in.readObject();
             in.close();
             bis.close();
+
+            if(response==null){
+                throw new Exception();
+            }
+
             return response;
         }
 
@@ -367,44 +367,27 @@ public  class BFTSMart {
 
 
                     byte[] bytes=new byte[]{};
-                    try {
-                        if(!accepted.isEmpty()){
-                            List<TransactionSignature> signatureLst = new ArrayList<>();
-                            for(ReplicaResponse response:accepted){
-                                signatureLst.add(((ReplicaResponse.Signature)response).getTxSignature());
+                    if(!accepted.isEmpty()){
+                        List<TransactionSignature> signatureLst = new ArrayList<>();
+                        for(ReplicaResponse response:accepted){
+                            signatureLst.add(((ReplicaResponse.Signature)response).getTxSignature());
 
-                            }
-                            ClusterResponse.Signatures signatures = new ClusterResponse.Signatures(signatureLst);
-                            ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                            ObjectOutput out = null;
-
-                            out = new ObjectOutputStream(bos);
-                            out.writeObject(signatures);
-                            out.flush();
-                            bos.flush();
-                            out.close();
-                            bos.close();
-                            bytes = bos.toByteArray();
-
-
-                        }else{
-                            List<SignedData<NotaryError>> errorLst = new ArrayList<>();
-                            for(ReplicaResponse response:rejected){
-                                errorLst.add(((ReplicaResponse.Error)response).getError());
-
-                            }
-                            ClusterResponse.Error errors = new ClusterResponse.Error(errorLst);
-                            ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                            ObjectOutput out = new ObjectOutputStream(bos);
-                            out.writeObject(errors);
-                            out.flush();
-                            bos.flush();
-                            out.close();
-                            bos.close();
-                            bytes = bos.toByteArray();
                         }
-                    } catch (IOException e) {
-                        e.printStackTrace();
+                        ClusterResponse.Signatures signatures = new ClusterResponse.Signatures(signatureLst);
+
+                        bytes = SerializationAPIKt.serialize(signatures,SerializationFactory.Companion.getDefaultFactory(), SerializationFactory.Companion.getDefaultFactory().getDefaultContext()).getBytes();
+
+
+
+                    }else{
+                        List<SignedData<NotaryError>> errorLst = new ArrayList<>();
+                        for(ReplicaResponse response:rejected){
+                            errorLst.add(((ReplicaResponse.Error)response).getError());
+
+                        }
+                        ClusterResponse.Error errors = new ClusterResponse.Error(errorLst);
+                        bytes = SerializationAPIKt.serialize(errors,SerializationFactory.Companion.getDefaultFactory(), SerializationFactory.Companion.getDefaultFactory().getDefaultContext()).getBytes();
+
                     }
 
                     TOMMessage reply = replies[lastReceived];
@@ -421,6 +404,8 @@ public  class BFTSMart {
         private  DeclaredField<ServerCommunicationSystem> csField;
 
         public CordaServiceReplica(@NotNull int replicaId, @NotNull Path configHome, @NotNull DefaultRecoverable owner) {
+
+
             super(replicaId, configHome.toString(), owner, owner,null, new DefaultReplier(),null);
             this.tomLayerField = InternalUtils.declaredField(this, Reflection.getOrCreateKotlinClass(ServiceReplica.class), "tomLayer");
             this.csField = InternalUtils.declaredField(this, Reflection.getOrCreateKotlinClass(ServiceReplica.class), "cs");
@@ -612,19 +597,12 @@ public  class BFTSMart {
 
         private  void logRequest(SecureHash txId, CordaX500Name callerName, NotarisationRequestSignature requestSignature) throws IOException {
 
-            ByteArrayOutputStream bos = new ByteArrayOutputStream();
-            ObjectOutput out = new ObjectOutputStream(bos);
-            out.writeObject(requestSignature);
-            out.flush();
-            bos.flush();
-            out.close();
-            bos.close();
-            //return bos.toByteArray();
-            //byte[] bytes = bos.toByteArray();
-
 //txId.toString(),
 //                    callerName.toString(), new byte[]{}, this.services.getClock().instant()
-            PersistentUniquenessProvider.Request request = new PersistentUniquenessProvider.Request();
+            PersistentUniquenessProvider.Request request = new PersistentUniquenessProvider.Request(null,
+                    txId.toString(),callerName.toString(),
+                    SerializationAPIKt.serialize(requestSignature,SerializationFactory.Companion.getDefaultFactory(), SerializationFactory.Companion.getDefaultFactory().getDefaultContext()).getBytes(),
+                    this.services.getClock().instant());
             Session session = DatabaseTransactionKt.currentDBSession();
             session.persist(request);
         }
@@ -668,17 +646,17 @@ public  class BFTSMart {
 
                 public  byte[] invoke(@NotNull DatabaseTransaction $receiver) {
                     Intrinsics.checkParameterIsNotNull($receiver, "$receiver");
-                    List<Pair<StateRef, SecureHash>> var2 =  (List<Pair<StateRef, SecureHash>>)Replica.this.commitLog.getAllPersisted().collect(Collectors.toList());
+                    List<Pair<StateRef, SecureHash>> var2 = (List<Pair<StateRef, SecureHash>>) Replica.this.commitLog.getAllPersisted().collect(Collectors.toList());
 
-                    for (Pair<StateRef, SecureHash> pair : var2 ){
-                        committedStates.put(pair.component1(),pair.component2());
+                    for (Pair<StateRef, SecureHash> pair : var2) {
+                        committedStates.put(pair.component1(), pair.component2());
                     }
 
                     CriteriaQuery criteriaQuery = $receiver.getSession().getCriteriaBuilder().createQuery(PersistentUniquenessProvider.Request.class);
                     criteriaQuery.select(criteriaQuery.from(PersistentUniquenessProvider.Request.class));
                     Query var10000 = $receiver.getSession().createQuery(criteriaQuery);
 
-                    try{
+                    try {
                         ByteArrayOutputStream bos = new ByteArrayOutputStream();
                         ObjectOutput out = new ObjectOutputStream(bos);
                         out.writeObject(var10000.getResultList());
@@ -687,7 +665,7 @@ public  class BFTSMart {
                         out.close();
                         bos.close();
                         return bos.toByteArray();
-                    }catch (IOException e) {
+                    } catch (IOException e) {
                         e.printStackTrace();
                     }
                     return null;

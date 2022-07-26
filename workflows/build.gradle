@@ -81,16 +81,16 @@ dependencies {
     //compile 'com.sendgrid:sendgrid-java:4.7.0'
 
     // CorDapp dependencies.
-    compile project(":contracts")
-
-    //Token SDK dependencies.
-    compile "$tokens_release_group:tokens-workflows:$tokens_release_version"
-    compile "$tokens_release_group:tokens-contracts:$tokens_release_version"
-    compile "$tokens_release_group:tokens-money:1.1"
-//    cordaCompile "$tokens_release_group:tokens-workflows:$tokens_release_version"
-//    cordaCompile "$tokens_release_group:tokens-contracts:$tokens_release_version"
-//    cordaCompile "$tokens_release_group:tokens-money:1.1"
-//    cordapp project(":contracts")
+//    compile project(":contracts")
+//
+//    //Token SDK dependencies.
+//    compile "$tokens_release_group:tokens-workflows:$tokens_release_version"
+//    compile "$tokens_release_group:tokens-contracts:$tokens_release_version"
+//    compile "$tokens_release_group:tokens-money:1.1"
+    cordaCompile "$tokens_release_group:tokens-workflows:$tokens_release_version"
+    cordaCompile "$tokens_release_group:tokens-contracts:$tokens_release_version"
+    cordaCompile "$tokens_release_group:tokens-money:1.1"
+    cordapp project(":contracts")
 
     ext.jmeterVersion = 3.3
     //ext.cordaVersion = "4.8"

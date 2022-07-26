@@ -1,5 +1,8 @@
 package net.corda.samples.trading.notaries;
 
+import kotlin.reflect.jvm.internal.impl.load.kotlin.DeserializationComponentsForJava;
+import net.corda.core.serialization.SerializationAPIKt;
+import net.corda.core.serialization.SerializationFactory;
 import tbftsmart.tom.MessageContext;
 import co.paralleluniverse.fibers.Suspendable;
 import com.google.common.util.concurrent.SettableFuture;
@@ -18,12 +21,10 @@ import net.corda.core.internal.notary.NotaryUtilsKt;
 import net.corda.core.schemas.PersistentStateRef;
 import net.corda.core.transactions.CoreTransaction;
 import net.corda.core.transactions.FilteredTransaction;
-import net.corda.core.utilities.NetworkHostAndPort;
 import net.corda.node.services.api.ServiceHubInternal;
 import net.corda.node.services.config.NotaryConfig;
 import net.corda.node.services.transactions.PersistentUniquenessProvider;
 import net.corda.node.utilities.AppendOnlyPersistentMap;
-import net.corda.samples.trading.notaries.BFTSMart;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import javax.persistence.Column;
@@ -34,13 +35,9 @@ import java.io.*;
 import java.net.SocketException;
 import java.security.PublicKey;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
-import java.util.logging.Logger;
 
 public  class BFTNotary extends NotaryService {
     private  NotaryConfig notaryConfig;
@@ -94,16 +91,26 @@ public  class BFTNotary extends NotaryService {
 
             int replicaId = this.bftConfig.getReplicaId();
             //BFTConfigInternal configHandle = bftConfigInternal.handle();
-            Replica replica = new Replica(bftConfigInternal, replicaId, this.services, notaryIdentityKey);
-            this.replicaHolder.set(replica);
+
+
+            Thread thread = new Thread("BFT SMaRt replica "+replicaId+" init") {
+
+                public void run() {
+                    try {
+                        Replica replica = new Replica(bftConfigInternal.handle(), replicaId, services, notaryIdentityKey);
+                        replicaHolder.set(replica);
+                    } catch (SocketException e) {
+                        e.printStackTrace();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            };
+
+            thread.setDaemon(true);
+            thread.start();
+
             this.client = new BFTSMart.Client(bftConfigInternal, replicaId, this.cluster, this);
-
-        //TODO
-//                Thread thread = new Thread(""){
-//
-//                };
-//                thread.setDaemon(true);
-
 
 
         }else {
@@ -183,15 +190,10 @@ public  class BFTNotary extends NotaryService {
                 BFTSMart.ReplicaResponse response = verifyAndCommitTx(commitRequest.getPayload().getCoreTransaction(), commitRequest.getCallerIdentity(), commitRequest.getPayload().getRequestSignature());
                 in.close();
                 bis.close();
+                //SerializationAPIKt.deserialize(command,SerializationFactory.Companion.getDefaultFactory(), SerializationFactory.Companion.getDefaultFactory().getDefaultContext());
 
-                ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                ObjectOutput out = new ObjectOutputStream(bos);
-                out.writeObject(response);
-                out.flush();
-                bos.flush();
-                out.close();
-                bos.close();
-                return bos.toByteArray();
+
+                return SerializationAPIKt.serialize(response, SerializationFactory.Companion.getDefaultFactory(), SerializationFactory.Companion.getDefaultFactory().getDefaultContext()).getBytes();
 
             }catch (IOException e) {
                 e.printStackTrace();
@@ -330,7 +332,7 @@ public  class BFTNotary extends NotaryService {
     }
 
     @NotNull
-    public  BFTSMart.ClusterResponse commitTransaction(@NotNull NotarisationPayload payload, @NotNull Party otherSide) throws InterruptedException, IOException, ClassNotFoundException {
+    public  BFTSMart.ClusterResponse commitTransaction(@NotNull NotarisationPayload payload, @NotNull Party otherSide) throws Exception {
         Intrinsics.checkParameterIsNotNull(payload, "payload");
         Intrinsics.checkParameterIsNotNull(otherSide, "otherSide");
         return this.client.commitTransaction(payload, otherSide);

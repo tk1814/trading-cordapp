@@ -1,49 +1,32 @@
 package net.corda.samples.trading.notaries;
 
 import com.typesafe.config.Config;
-import kotlin.Unit;
 import kotlin.jvm.internal.Intrinsics;
-import net.corda.core.internal.PathUtilsKt;
 import net.corda.core.utilities.NetworkHostAndPort;
 import net.corda.node.services.transactions.PathManager;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.net.InetAddress;
 import java.net.Socket;
 import java.net.SocketException;
-import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.Callable;
 
-public class BFTConfigInternal{
+public class BFTConfigInternal extends PathManager<BFTConfigInternal> {
     private List<NetworkHostAndPort> replicaAddresses;
 
     private boolean exposeRaces;
 
     private int clusterSize;
 
-    public Path getPath() {
-        return path;
-    }
 
-    public void setPath(Path path) {
-        this.path = path;
-    }
 
-    public Path path = Paths.get(new File("../config").getCanonicalPath());
+    //public Path path = Paths.get(new File("../config").getCanonicalPath());
 
     private Boolean debug;
 
@@ -59,7 +42,7 @@ public class BFTConfigInternal{
     }
 
     public BFTConfigInternal(@NotNull List<NetworkHostAndPort> replicaAddresses, @NotNull boolean debug, @NotNull boolean exposeRaces) throws IOException {
-
+        super(Paths.get(new File("../config").getCanonicalPath()));
         this.replicaAddresses = replicaAddresses;
         this.exposeRaces = exposeRaces;
         this.debug = debug;
@@ -88,11 +71,11 @@ public class BFTConfigInternal{
     public void waitUntilReplicaWillNotPrintStackTrace(int contextReplicaId) throws SocketException, InterruptedException {
         int peerId = contextReplicaId - 1;
         if(peerId < 0) return;
-        NetworkHostAndPort address = BFTPort.FOR_REPLICAS.ofReplica(replicaAddresses.get(peerId));
-
-        while(!isListening(address)){
-            Thread.sleep(200);
-        }
+//        NetworkHostAndPort address = BFTPort.FOR_REPLICAS.ofReplica(replicaAddresses.get(peerId));
+//
+//        while(!isListening(address)){
+//            Thread.sleep(200);
+//        }
     }
 
 
