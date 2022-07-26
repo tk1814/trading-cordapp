@@ -36,7 +36,6 @@ import java.util.stream.Collectors;
 public class Controller {
     private final CordaRPCOps proxy;
     private final CordaX500Name myLegalName;
-    private final List<String> SERVICE_NAMES = ImmutableList.<String>of("Notary");
 
     public Controller(NodeRPCConnection rpc) {
         this.proxy = rpc.proxy;
@@ -61,7 +60,7 @@ public class Controller {
         return ImmutableMap.of("nodes", nodes
                 .stream()
                 .map(node -> node.getLegalIdentities().get(0).getName())
-                .filter(name -> !SERVICE_NAMES.contains(name.getOrganisation()))
+                .filter(name -> !name.getOrganisation().contains("Notary"))
                 .map(CordaX500Name::toString)
                 .collect(Collectors.toList()));
     }

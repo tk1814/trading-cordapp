@@ -55,7 +55,7 @@ class CreateTrade extends Component {
             bidPrice: "--",
             askPrice: "--",
             intervalId: null,
-            stockCodes: ["AAPL", "TSLA", "NFLX", "META", "GOOG", "^GSPC", "TWTR"],
+            stockCodes: ["AAPL", "TSLA", "NFLX", "META", "GOOG", "TWTR"],
         }
     }
 
@@ -403,8 +403,6 @@ class CreateTrade extends Component {
             }).then(res => {
                 console.log(res.data.Response);
             })
-        } else {
-            window.alert("Cannot trade: Not enough funds or expired trade.")
         }
     }
 
