@@ -24,9 +24,6 @@ import java.util.stream.Collectors;
 @StartableByRPC
 public class SettleTradeFlow extends FlowLogic<SignedTransaction> {
 
-    //    private final Party counterParty;
-//    private final String settlementDate;
-//    private final UniqueIdentifier linearId;
     private Party seller;
     private Party buyer;
 
