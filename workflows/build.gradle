@@ -106,8 +106,9 @@ dependencies {
     compile group: 'org.apache.jmeter', name: 'ApacheJMeter_java', version: jmeterVersion // 'compile' because we extend Java sampler.
 
 
-
-
+    configurations.all {
+        exclude group: "com.github.bft-smart", module: 'library'
+    }
 
 }
 

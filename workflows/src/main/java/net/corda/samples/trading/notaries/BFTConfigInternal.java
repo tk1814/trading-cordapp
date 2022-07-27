@@ -17,7 +17,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-public class BFTConfigInternal extends PathManager<BFTConfigInternal> {
+public class BFTConfigInternal{
     private List<NetworkHostAndPort> replicaAddresses;
 
     private boolean exposeRaces;
@@ -25,8 +25,15 @@ public class BFTConfigInternal extends PathManager<BFTConfigInternal> {
     private int clusterSize;
 
 
+    public Path getPath() {
+        return path;
+    }
 
-    //public Path path = Paths.get(new File("../config").getCanonicalPath());
+    public void setPath(Path path) {
+        this.path = path;
+    }
+
+    public Path path = Paths.get(new File("config").getCanonicalPath());
 
     private Boolean debug;
 
@@ -42,7 +49,7 @@ public class BFTConfigInternal extends PathManager<BFTConfigInternal> {
     }
 
     public BFTConfigInternal(@NotNull List<NetworkHostAndPort> replicaAddresses, @NotNull boolean debug, @NotNull boolean exposeRaces) throws IOException {
-        super(Paths.get(new File("../config").getCanonicalPath()));
+        //super(Paths.get(new File("config").getCanonicalPath()));
         this.replicaAddresses = replicaAddresses;
         this.exposeRaces = exposeRaces;
         this.debug = debug;
