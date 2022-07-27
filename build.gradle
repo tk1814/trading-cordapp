@@ -168,7 +168,7 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
         throw new IllegalArgumentException("GradleException: This build must be run with java 8") //GradleException("This build must be run with java 8")
     }
 
-    def clusterAddresses = ["localhost:11000", "localhost:11010", "localhost:11020", "localhost:11030"]
+    def clusterAddresses = ["127.0.0.1:11000", "127.0.0.1:11010", "127.0.0.1:11020", "127.0.0.1:11030"]
     nodeDefaults {
         projectCordapp { deploy = true }
         cordapp "$tokens_release_group:tokens-money:1.1"
@@ -183,10 +183,11 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
 
     node {
         name "O=Notary Service 0,L=Zurich,C=CH"
-        p2pPort 10009
+        p2pAddress "20.90.87.120:10009"
+        //p2pPort 10009
         rpcSettings {
-            address "localhost:10010"
-            adminAddress "localhost:10110"
+            address "0.0.0.0:10010"
+            adminAddress "0.0.0.0:10110"
         }
         notary = [
                 validating: false,
@@ -203,10 +204,12 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
     }
     node {
         name "O=Notary Service 1,L=Zurich,C=CH"
-        p2pPort 10013
+
+        p2pAddress "20.90.87.120:10013"
+        //p2pPort 10013
         rpcSettings {
-            address "localhost:10014"
-            adminAddress "localhost:10114"
+            address "0.0.0.0:10014"
+            adminAddress "0.0.0.0:10114"
         }
         notary = [
                 validating: false,
@@ -223,10 +226,11 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
     }
     node {
         name "O=Notary Service 2,L=Zurich,C=CH"
-        p2pPort 10017
+        p2pAddress "20.90.87.120:10017"
+        //p2pPort 10017
         rpcSettings {
-            address "localhost:10018"
-            adminAddress "localhost:10118"
+            address "0.0.0.0:10018"
+            adminAddress "0.0.0.0:10118"
         }
         notary = [
                 validating: false,
@@ -243,10 +247,11 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
     }
     node {
         name "O=Notary Service 3,L=Zurich,C=CH"
-        p2pPort 10021
+        p2pAddress "20.90.87.120:10021"
+        //p2pPort 10021
         rpcSettings {
-            address "localhost:10022"
-            adminAddress "localhost:10122"
+            address "0.0.0.0:10022"
+            adminAddress "0.0.0.0:10122"
         }
         notary = [
                 validating: false,
@@ -265,10 +270,11 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
 
     node {
         name "O=PartyA,L=London,C=GB"
-        p2pPort 10006
+        p2pAddress "20.90.87.120:10006"
+        //p2pPort 10006
         rpcSettings {
-            address("localhost:10016")
-            adminAddress("localhost:10046")
+            address("0.0.0.0:10016")
+            adminAddress("0.0.0.0:10046")
         }
         runSchemaMigration = true
 
@@ -277,10 +283,11 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
 
     node {
         name "O=PartyB,L=New York,C=US"
-        p2pPort 10007
+        p2pAddress "20.90.87.120:10007"
+        //p2pPort 10007
         rpcSettings {
-            address("localhost:10017")
-            adminAddress("localhost:10027")
+            address("0.0.0.0:10025")
+            adminAddress("0.0.0.0:10225")
         }
         runSchemaMigration = true
 
