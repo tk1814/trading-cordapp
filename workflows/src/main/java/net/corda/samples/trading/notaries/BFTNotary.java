@@ -97,7 +97,7 @@ public  class BFTNotary extends NotaryService {
 
                 public void run() {
                     try {
-                        Replica replica = new Replica(bftConfigInternal.handle(), replicaId, services, notaryIdentityKey);
+                        Replica replica = new Replica(bftConfigInternal, replicaId, services, notaryIdentityKey);
                         replicaHolder.set(replica);
                     } catch (SocketException e) {
                         e.printStackTrace();
