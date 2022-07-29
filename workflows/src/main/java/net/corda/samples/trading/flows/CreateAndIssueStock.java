@@ -3,9 +3,12 @@ package net.corda.samples.trading.flows;
 import co.paralleluniverse.fibers.Suspendable;
 import com.google.common.collect.ImmutableList;
 import com.r3.corda.lib.tokens.contracts.states.FungibleToken;
+import com.r3.corda.lib.tokens.contracts.types.TokenPointer;
 import com.r3.corda.lib.tokens.workflows.flows.rpc.CreateEvolvableTokens;
 import com.r3.corda.lib.tokens.workflows.flows.rpc.IssueTokens;
 import com.r3.corda.lib.tokens.workflows.utilities.FungibleTokenBuilder;
+import jdk.nashorn.internal.parser.TokenType;
+import net.corda.core.contracts.StateAndRef;
 import net.corda.core.contracts.TransactionState;
 import net.corda.core.contracts.UniqueIdentifier;
 import net.corda.core.flows.FlowException;
@@ -16,8 +19,10 @@ import net.corda.core.identity.CordaX500Name;
 import net.corda.core.identity.Party;
 import net.corda.core.transactions.SignedTransaction;
 import net.corda.samples.trading.states.FungibleStockState;
+import net.corda.samples.trading.states.TradeState;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -51,24 +56,38 @@ public class CreateAndIssueStock extends FlowLogic<String> {
         observers.remove(getOurIdentity());
         observers.remove(notary);
 
-        Party company = getOurIdentity();
+        final TokenPointer<FungibleStockState> stockStatePointer;
 
-        // Construct the output stockState
-        final FungibleStockState stockState = new FungibleStockState(
-                new UniqueIdentifier(),
-                company,
-                name
-        );
+        List<StateAndRef<FungibleStockState>> evolvableTokenList = getServiceHub().getVaultService().
+                queryBy(FungibleStockState.class).getStates().stream()
+                .filter(x -> x.getState().getData().getName().equals(name))
+                .collect(Collectors.toList());
 
-        // The notary provided here will be used in all future actions of this token
-        TransactionState<FungibleStockState> transactionState = new TransactionState<>(stockState, notary);
+        // If stock does not exist, create a new stock
+        if (evolvableTokenList.isEmpty()) {
 
-        // Using the build-in flow to create an evolvable token type
-        subFlow(new CreateEvolvableTokens(transactionState, observers));
+            // Construct the output stockState
+            final FungibleStockState stockState = new FungibleStockState(
+                    new UniqueIdentifier(),
+                    getOurIdentity(),
+                    name
+            );
+
+            // The notary provided here will be used in all future actions of this token
+            TransactionState<FungibleStockState> transactionState = new TransactionState<>(stockState, notary);
+
+            // Using the build-in flow to create an evolvable token type
+            subFlow(new CreateEvolvableTokens(transactionState, observers));
+            stockStatePointer = stockState.toPointer();
+
+        } else {
+            // If stock exists, issue from the existing stock
+            stockStatePointer = evolvableTokenList.get(0).getState().getData().toPointer();
+        }
 
         // Indicate the recipient which is the issuing party itself
         FungibleToken stockToken = new FungibleTokenBuilder()
-                .ofTokenType(stockState.toPointer())
+                .ofTokenType(stockStatePointer)
                 .withAmount(issueVol)
                 .issuedBy(getOurIdentity())
                 .heldBy(getOurIdentity())
