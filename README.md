@@ -205,3 +205,10 @@ SSH Port: 22
 SSH Username: <username>
 SSH Password: <password>
 ```
+
+To restart a node:
+
+1. kill the node
+2. delete these folders: ```rm -r artemis/ logs/ per*```
+3. start the node again, and add the run-migration-script sub-command: ```--app-schemas --core-schemas```
+
