@@ -41,5 +41,20 @@
       <option name="name" value="maven4" />
       <option name="url" value="https://jitpack.io" />
     </remote-repository>
+    <remote-repository>
+      <option name="id" value="MavenLocal2" />
+      <option name="name" value="MavenLocal2" />
+      <option name="url" value="file:/$MAVEN_REPOSITORY$/" />
+    </remote-repository>
+    <remote-repository>
+      <option name="id" value="maven8" />
+      <option name="name" value="maven8" />
+      <option name="url" value="https://software.r3.com/artifactory/corda-dependencies" />
+    </remote-repository>
+    <remote-repository>
+      <option name="id" value="maven6" />
+      <option name="name" value="maven6" />
+      <option name="url" value="https://software.r3.com/artifactory/corda-lib" />
+    </remote-repository>
   </component>
 </project>

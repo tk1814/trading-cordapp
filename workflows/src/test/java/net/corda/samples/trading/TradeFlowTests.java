@@ -27,6 +27,7 @@ import org.junit.Test;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
@@ -59,6 +60,7 @@ public class TradeFlowTests {
     public final static UniqueIdentifier LINEAR_ID = new UniqueIdentifier(null, UUID.fromString("6231f549-9c1b-041f-90dd-1dc728fcbafc"));
     public final static TokenType fiatTokenType = FiatCurrency.Companion.getInstance("USD");
     public static TradeState tradeState = null;
+    public static TradeState tradeState2 = null;
     public static TradeState counterTradeState = null;
     public static TradeState cancelTradeState = null;
 
@@ -85,6 +87,9 @@ public class TradeFlowTests {
 
         tradeState = new TradeState(partyA.getInfo().getLegalIdentities().get(0), null, "Pending Order",
                 "Sell", STOCK_SYMBOL, STOCK_PRICE, TRADING_STOCK_QUANTITY, LocalDateTime.parse(expirationDate + ":00.00"), "Pending",
+                LocalDateTime.parse(tradeDate), null, LINEAR_ID);
+        tradeState2 = new TradeState(partyB.getInfo().getLegalIdentities().get(0), null, "Pending Order",
+                "Buy", STOCK_SYMBOL, STOCK_PRICE, TRADING_STOCK_QUANTITY, LocalDateTime.parse(expirationDate + ":00.00"), "Pending",
                 LocalDateTime.parse(tradeDate), null, LINEAR_ID);
         cancelTradeState = new TradeState(partyA.getInfo().getLegalIdentities().get(0), null, "Pending Order",
                 "Sell", STOCK_SYMBOL, STOCK_PRICE, TRADING_STOCK_QUANTITY, LocalDateTime.parse(expirationDate + ":00.00"), "Cancelled",
