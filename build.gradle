@@ -30,6 +30,7 @@ buildscript { //properties that you need to build the project
     }
 
     repositories {
+
         mavenLocal()
         mavenCentral()
         maven { url 'https://jitpack.io' }
@@ -48,20 +49,29 @@ buildscript { //properties that you need to build the project
 
         classpath "com.sendgrid:sendgrid-java:4.7.0"
         classpath "com.sendgrid:java-http-client:4.3.6"
+
+        classpath fileTree (dir:'lib', include:['*.jar'])
     }
 }
+
 
 allprojects {//Properties that you need to compile your project (The application)
     apply from: "${rootProject.projectDir}/repositories.gradle"
     apply plugin: 'java'
 
     repositories {
+
+
         mavenLocal()
 
         mavenCentral()
         maven { url 'https://jitpack.io' }
         maven { url 'https://software.r3.com/artifactory/corda' }
         maven { url 'https://software.r3.com/artifactory/corda-lib' }
+        maven { url "https://software.r3.com/artifactory/corda" }
+
+        // Corda dependencies for the patched Quasar version
+        maven { url "https://software.r3.com/artifactory/corda-dependencies" }
     }
 
     tasks.withType(JavaCompile) {
@@ -103,6 +113,19 @@ dependencies {
     cordaCompile "$corda_core_release_group:corda-core:$corda_core_release_version"
     cordaCompile "$corda_release_group:corda-node-api:$corda_release_version"
     cordaRuntime "$corda_release_group:corda:$corda_release_version"
+    cordaCompile ("$corda_release_group:corda-node:$corda_release_version")
+//            {
+//        exclude group: 'com.github.bft-smart', module: 'library'
+//    }// added
+
+    configurations.all {
+        exclude group: "com.github.bft-smart", module: 'library'
+    }
+
+
+
+    compile fileTree (dir:'lib', include:['*.jar'])
+
 
     // CorDapp dependencies.
     cordapp project(":workflows")
@@ -115,12 +138,21 @@ dependencies {
     cordaCompile "$corda_release_group:corda-finance-contracts:$corda_release_version"
     cordaCompile "$corda_release_group:corda-finance-workflows:$corda_release_version"
 
+
+    // Any sampler needs to depend on Corda RPC to invoke flows - the RPC client is used to actually drive the node
+
+
+
     // Token SDK dependencies.
+    cordapp "$tokens_release_group:tokens-money:1.1"
     cordapp "$tokens_release_group:tokens-contracts:$tokens_release_version"
     cordapp "$tokens_release_group:tokens-workflows:$tokens_release_version"
     cordapp("$corda_release_group:corda-finance-contracts:$corda_release_version")
     cordapp("$corda_release_group:corda-finance-workflows:$corda_release_version")
-    }
+
+
+
+}
 
 //Task to deploy the nodes in order to bootstrap a network
 task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
@@ -136,32 +168,113 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
         throw new IllegalArgumentException("GradleException: This build must be run with java 8") //GradleException("This build must be run with java 8")
     }
 
+    def clusterAddresses = ["127.0.0.1:11000", "127.0.0.1:11010", "127.0.0.1:11020", "127.0.0.1:11030"]
     nodeDefaults {
         projectCordapp { deploy = true }
+        cordapp "$tokens_release_group:tokens-money:1.1"
         cordapp("$corda_release_group:corda-finance-contracts:$corda_release_version")
         cordapp("$corda_release_group:corda-finance-workflows:$corda_release_version")
         cordapp("$tokens_release_group:tokens-contracts:$tokens_release_version")
         cordapp("$tokens_release_group:tokens-workflows:$tokens_release_version")
         cordapp project(':contracts')
         cordapp project(':workflows')
+
     }
 
     node {
-        name "O=Notary,L=London,C=GB"
-        notary = [validating : false]
-        p2pPort 10002
+        name "O=Notary Service 0,L=Zurich,C=CH"
+        p2pAddress "20.90.87.120:10009"
+        //p2pPort 10009
         rpcSettings {
-            address("localhost:10003")
-            adminAddress("localhost:10043")
+            address "0.0.0.0:10010"
+            adminAddress "0.0.0.0:10110"
         }
-        runSchemaMigration = true
+        notary = [
+                validating: false,
+                serviceLegalName: "O=BFT,L=Zurich,C=CH",
+                className:"net.corda.samples.trading.notaries.BFTNotary",
+                extraConfig:
+                        [bft: [
+                                replicaId: 0,
+                                clusterAddresses: clusterAddresses,
+                                debug: true,
+                                exposeRaces: false
+                        ]]
+        ]
     }
     node {
-        name "O=PartyA,L=London,C=GB"
-        p2pPort 10006
+        name "O=Notary Service 1,L=Zurich,C=CH"
+
+        p2pAddress "20.90.87.120:10013"
+        //p2pPort 10013
         rpcSettings {
-            address("localhost:10016")
-            adminAddress("localhost:10046")
+            address "0.0.0.0:10014"
+            adminAddress "0.0.0.0:10114"
+        }
+        notary = [
+                validating: false,
+                serviceLegalName: "O=BFT,L=Zurich,C=CH",
+                className:"net.corda.samples.trading.notaries.BFTNotary",
+                extraConfig:
+                        [bft: [
+                                replicaId: 1,
+                                clusterAddresses: clusterAddresses,
+                                debug: true,
+                                exposeRaces: false
+                        ]]
+        ]
+    }
+    node {
+        name "O=Notary Service 2,L=Zurich,C=CH"
+        p2pAddress "20.90.87.120:10017"
+        //p2pPort 10017
+        rpcSettings {
+            address "0.0.0.0:10018"
+            adminAddress "0.0.0.0:10118"
+        }
+        notary = [
+                validating: false,
+                serviceLegalName: "O=BFT,L=Zurich,C=CH",
+                className:"net.corda.samples.trading.notaries.BFTNotary",
+                extraConfig:
+                        [bft: [
+                                replicaId: 2,
+                                clusterAddresses: clusterAddresses,
+                                debug: true,
+                                exposeRaces: false
+                        ]]
+        ]
+    }
+    node {
+        name "O=Notary Service 3,L=Zurich,C=CH"
+        p2pAddress "20.90.87.120:10021"
+        //p2pPort 10021
+        rpcSettings {
+            address "0.0.0.0:10022"
+            adminAddress "0.0.0.0:10122"
+        }
+        notary = [
+                validating: false,
+                serviceLegalName: "O=BFT,L=Zurich,C=CH",
+                className:"net.corda.samples.trading.notaries.BFTNotary",
+                extraConfig:
+                        [bft: [
+                                replicaId: 3,
+                                clusterAddresses: clusterAddresses,
+                                debug: true,
+                                exposeRaces: false
+                        ]]
+        ]
+    }
+
+
+    node {
+        name "O=PartyA,L=London,C=GB"
+        p2pAddress "20.90.87.120:10006"
+        //p2pPort 10006
+        rpcSettings {
+            address("0.0.0.0:10016")
+            adminAddress("0.0.0.0:10046")
         }
         runSchemaMigration = true
 
@@ -170,13 +283,15 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
 
     node {
         name "O=PartyB,L=New York,C=US"
-        p2pPort 10007
+        p2pAddress "20.90.87.120:10007"
+        //p2pPort 10007
         rpcSettings {
-            address("localhost:10017")
-            adminAddress("localhost:10027")
+            address("0.0.0.0:10025")
+            adminAddress("0.0.0.0:10225")
         }
         runSchemaMigration = true
 
         rpcUsers = [[ user: "user1", "password": "test", "permissions": ["ALL"]]]
     }
+
 }

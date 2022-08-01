@@ -22,6 +22,8 @@ dependencies {
     // Corda dependencies.
     compile "$corda_release_group:corda-rpc:$corda_release_version"
 
+
+
     // CorDapp dependencies.
     compile project(":contracts")
     compile project(":workflows")
@@ -41,7 +43,9 @@ dependencies {
     compile group: 'javax.ws.rs', name: 'javax.ws.rs-api', version: '2.0.1' // added ^
     // https://mvnrepository.com/artifact/javax.ws.rs/javax.ws.rs-api
     implementation group: 'javax.ws.rs', name: 'javax.ws.rs-api', version: '2.0.1' // added ^
-
+    configurations.all {
+        exclude group: "com.github.bft-smart", module: 'library'
+    }
 }
 
 springBoot {
@@ -71,5 +75,5 @@ task runPartyAServer(type: JavaExec, dependsOn: assemble) {
 task runPartyBServer(type: JavaExec, dependsOn: assemble) {
     classpath = sourceSets.main.runtimeClasspath
     main = 'net.corda.samples.trading.webserver.Starter'
-    args '--server.port=10057', '--config.rpc.host=localhost', '--config.rpc.port=10017', '--config.rpc.username=user1', '--config.rpc.password=test'
+    args '--server.port=10057', '--config.rpc.host=localhost', '--config.rpc.port=10025', '--config.rpc.username=user1', '--config.rpc.password=test'
 }

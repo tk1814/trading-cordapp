@@ -5,6 +5,7 @@ import com.google.common.collect.ImmutableList;
 import net.corda.core.contracts.StateAndRef;
 import net.corda.core.contracts.UniqueIdentifier;
 import net.corda.core.flows.*;
+import net.corda.core.identity.CordaX500Name;
 import net.corda.core.identity.Party;
 import net.corda.core.node.StatesToRecord;
 import net.corda.core.transactions.SignedTransaction;
@@ -35,7 +36,7 @@ public class CancelTradeFlow {
         @Suspendable
         public SignedTransaction call() throws FlowException {
             // Obtain a reference to the notary we want to use.
-            Party notary = getServiceHub().getNetworkMapCache().getNotaryIdentities().get(0);
+            final Party notary = getServiceHub().getNetworkMapCache().getNotary(CordaX500Name.parse("O=Notary Service 0,L=Zurich,C=CH"));
 
             // Generate a transaction by taking the current state
             List<StateAndRef<TradeState>> inputTradeStateList = getServiceHub().getVaultService().queryBy(TradeState.class).getStates().stream()

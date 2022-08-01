@@ -20,7 +20,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.*;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
@@ -35,7 +37,6 @@ import java.util.stream.Collectors;
 public class Controller {
     private final CordaRPCOps proxy;
     private final CordaX500Name myLegalName;
-    private final List<String> SERVICE_NAMES = ImmutableList.<String>of("Notary");
 
     public Controller(NodeRPCConnection rpc) {
         this.proxy = rpc.proxy;
@@ -60,7 +61,7 @@ public class Controller {
         return ImmutableMap.of("nodes", nodes
                 .stream()
                 .map(node -> node.getLegalIdentities().get(0).getName())
-                .filter(name -> !SERVICE_NAMES.contains(name.getOrganisation()))
+                .filter(name -> !name.getOrganisation().contains("Notary"))
                 .map(CordaX500Name::toString)
                 .collect(Collectors.toList()));
     }
@@ -79,8 +80,6 @@ public class Controller {
      */
     @RequestMapping(value = "/createTrade", method = RequestMethod.POST)
     public ResponseEntity<String> createTrade(@RequestBody String payload) {
-        System.out.println(payload);
-
         JsonObject convertedObject = new Gson().fromJson(payload, JsonObject.class);
 
         String orderType = convertedObject.get("orderType").getAsString();
@@ -103,8 +102,8 @@ public class Controller {
         } else {
             try {
                 TradeState tradeState = new TradeState(proxy.wellKnownPartyFromX500Name(myLegalName), null,
-                        orderType, tradeType, stockName, stockPrice, stockQuantity, expirationDate, "Pending",
-                        tradeDate, null, new UniqueIdentifier());
+                        orderType, tradeType, stockName, stockPrice, stockQuantity, LocalDateTime.parse(expirationDate + ":00.00"), "Pending",
+                        LocalDateTime.parse(tradeDate), null, new UniqueIdentifier());
 
                 SignedTransaction signedTx = proxy.startTrackedFlowDynamic(TradeFlow.Initiator.class, tradeState).getReturnValue().get();
                 System.out.println("signedTx.getId() =  :" + signedTx.getId());
@@ -131,7 +130,6 @@ public class Controller {
      */
     @RequestMapping(value = "/counterTrade", method = RequestMethod.POST)
     public ResponseEntity<String> counterTrade(@RequestBody String payload) {
-        System.out.println(payload);
         JsonObject convertedObject = new Gson().fromJson(payload, JsonObject.class);
 
         String counterPartyString = convertedObject.get("counterParty").getAsString();
@@ -152,7 +150,7 @@ public class Controller {
             try {
                 UniqueIdentifier linearId = new UniqueIdentifier(null, UUID.fromString(tradeID));
                 Party counterParty = proxy.wellKnownPartyFromX500Name(CordaX500Name.parse(counterPartyString));
-                SignedTransaction signedTx = proxy.startTrackedFlowDynamic(SettleTradeFlow.class, counterParty, settlementDate, linearId).getReturnValue().get();
+                SignedTransaction signedTx = proxy.startTrackedFlowDynamic(SettleTradeFlow.class, counterParty, LocalDateTime.parse(settlementDate), linearId).getReturnValue().get();
 
                 System.out.println("signedTx.getId() =  :" + signedTx.getId());
                 resp.addProperty("Response", "Transaction id " + signedTx.getId() + " committed to ledger.\n");
@@ -170,7 +168,6 @@ public class Controller {
      */
     @RequestMapping(value = "/cancelTrade", method = RequestMethod.POST)
     public ResponseEntity<String> cancelTrade(@RequestBody String payload) {
-        System.out.println(payload);
         JsonObject convertedObject = new Gson().fromJson(payload, JsonObject.class);
 
         String tradeStatus = convertedObject.get("tradeStatus").getAsString();
@@ -200,7 +197,7 @@ public class Controller {
     public ResponseEntity<String> issueStock(@RequestBody String payload) {
         JsonObject convertedObject = new Gson().fromJson(payload, JsonObject.class);
 
-        int amount = convertedObject.get("amount").getAsInt();
+        long amount = convertedObject.get("amount").getAsLong();
         String name = convertedObject.get("name").getAsString();
         JsonObject resp = new JsonObject();
 

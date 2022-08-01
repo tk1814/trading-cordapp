@@ -26,7 +26,7 @@ import org.junit.Test;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.Arrays;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
@@ -52,27 +52,26 @@ public class TradeFlowTests {
 
     public final static String STOCK_SYMBOL = "TEST";
     public final static double STOCK_PRICE = 22.2;
-    public final static int ISSUING_STOCK_QUANTITY = 10;
+    public final static long ISSUING_STOCK_QUANTITY = 10;
     public final static int TRADING_STOCK_QUANTITY = 4;
     public final static String CURRENCY = "USD";
     public final static Integer ISSUING_MONEY = 300;
     public final static UniqueIdentifier LINEAR_ID = new UniqueIdentifier(null, UUID.fromString("6231f549-9c1b-041f-90dd-1dc728fcbafc"));
     public final static TokenType fiatTokenType = FiatCurrency.Companion.getInstance("USD");
     public static TradeState tradeState = null;
-    public static TradeState tradeState2 = null;
     public static TradeState counterTradeState = null;
     public static TradeState cancelTradeState = null;
 
     @Before
     public void setup() {
         network = new MockNetwork(new MockNetworkParameters().withNetworkParameters(new NetworkParameters(
-                4, emptyList(), 1000000000, 1000000000, Instant.now(), 1,
-                emptyMap())).withCordappsForAllNodes(ImmutableList.of(
-                TestCordapp.findCordapp("net.corda.samples.trading.contracts"),
-                TestCordapp.findCordapp("net.corda.samples.trading.flows"),
-                TestCordapp.findCordapp("com.r3.corda.lib.tokens.contracts"),
-                TestCordapp.findCordapp("com.r3.corda.lib.tokens.workflows")
-        )).withThreadPerNode(false)
+                        4, emptyList(), 1000000000, 1000000000, Instant.now(), 1,
+                        emptyMap())).withCordappsForAllNodes(ImmutableList.of(
+                        TestCordapp.findCordapp("net.corda.samples.trading.contracts"),
+                        TestCordapp.findCordapp("net.corda.samples.trading.flows"),
+                        TestCordapp.findCordapp("com.r3.corda.lib.tokens.contracts"),
+                        TestCordapp.findCordapp("com.r3.corda.lib.tokens.workflows")
+                )).withThreadPerNode(false)
                 .withNotarySpecs(ImmutableList.of(new MockNetworkNotarySpec(CordaX500Name.parse("O=Notary,L=London,C=GB")))));
 
         partyA = network.createPartyNode(PARTY_A.getName());
@@ -85,17 +84,14 @@ public class TradeFlowTests {
         network.startNodes();
 
         tradeState = new TradeState(partyA.getInfo().getLegalIdentities().get(0), null, "Pending Order",
-                "Sell", STOCK_SYMBOL, STOCK_PRICE, TRADING_STOCK_QUANTITY, expirationDate, "Pending",
-                tradeDate, null, LINEAR_ID);
-        tradeState2 = new TradeState(partyB.getInfo().getLegalIdentities().get(0), null, "Pending Order",
-                "Buy", STOCK_SYMBOL, STOCK_PRICE, TRADING_STOCK_QUANTITY, expirationDate, "Pending",
-                tradeDate, null, LINEAR_ID);
+                "Sell", STOCK_SYMBOL, STOCK_PRICE, TRADING_STOCK_QUANTITY, LocalDateTime.parse(expirationDate + ":00.00"), "Pending",
+                LocalDateTime.parse(tradeDate), null, LINEAR_ID);
         cancelTradeState = new TradeState(partyA.getInfo().getLegalIdentities().get(0), null, "Pending Order",
-                "Sell", STOCK_SYMBOL, STOCK_PRICE, TRADING_STOCK_QUANTITY, expirationDate, "Cancelled",
-                tradeDate, null, LINEAR_ID);
+                "Sell", STOCK_SYMBOL, STOCK_PRICE, TRADING_STOCK_QUANTITY, LocalDateTime.parse(expirationDate + ":00.00"), "Cancelled",
+                LocalDateTime.parse(tradeDate), null, LINEAR_ID);
         counterTradeState = new TradeState(partyA.getInfo().getLegalIdentities().get(0), partyB.getInfo().getLegalIdentities().get(0),
-                "Pending Order", "Sell", STOCK_SYMBOL, STOCK_PRICE, TRADING_STOCK_QUANTITY, expirationDate, "Accepted",
-                tradeDate, settlementDate, LINEAR_ID);
+                "Pending Order", "Sell", STOCK_SYMBOL, STOCK_PRICE, TRADING_STOCK_QUANTITY, LocalDateTime.parse(expirationDate + ":00.00"), "Accepted",
+                LocalDateTime.parse(tradeDate), LocalDateTime.parse(settlementDate), LINEAR_ID);
     }
 
     @After
@@ -169,7 +165,6 @@ public class TradeFlowTests {
         // Check trade state
         assertEquals(remainingTradeState.toString(), tradeState.toString());
     }
-
 
     @Test
     public void counterTradeFlowTest() throws ExecutionException, InterruptedException {

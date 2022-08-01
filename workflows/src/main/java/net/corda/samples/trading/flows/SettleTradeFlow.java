@@ -11,6 +11,7 @@ import net.corda.core.transactions.SignedTransaction;
 import net.corda.samples.trading.entity.MatchRecord;
 import net.corda.samples.trading.states.TradeState;
 
+import java.time.LocalDateTime;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -25,6 +26,9 @@ import java.util.stream.Collectors;
 @StartableByRPC
 public class SettleTradeFlow extends FlowLogic<SignedTransaction> {
 
+    private final Party counterParty;
+    private final LocalDateTime settlementDate;
+    private final UniqueIdentifier linearId;
     private Party seller;
     private Party buyer;
 
@@ -32,8 +36,8 @@ public class SettleTradeFlow extends FlowLogic<SignedTransaction> {
 
     public SettleTradeFlow(MatchRecord matchRecord) {
         this.matchRecord = matchRecord;
+        this.settlementDate = settlementDate;
     }
-
 
     @Override
     @Suspendable
@@ -49,23 +53,26 @@ public class SettleTradeFlow extends FlowLogic<SignedTransaction> {
         //undo
         initialTradeState.setSettlementDate(LocalDateTime.now(ZoneOffset.UTC).toString());
 
-        counterPartyTradeState.setCounterParty(initialTradeState.getInitiatingParty());
-        counterPartyTradeState.setStockPrice(matchRecord.price.doubleValue());
-        counterPartyTradeState.setStockQuantity(matchRecord.quantity.intValue());
-        counterPartyTradeState.setTradeStatus("Accepted");
-        //undo
-        counterPartyTradeState.setSettlementDate(LocalDateTime.now(ZoneOffset.UTC).toString());
+        TradeState inputState = inputTradeStateList.get(0).getState().getData();
+        TradeState counterTradeState = new TradeState(inputState.getInitiatingParty(), counterParty, inputState.getOrderType(),
+                inputState.getTradeType(), inputState.getStockName(), inputState.getStockPrice(),
+                inputState.getStockQuantity(), inputState.getExpirationDate(), "Accepted",
+                inputState.getTradeDate(), settlementDate, linearId);
 
-        BigDecimal cost = matchRecord.price.multiply(matchRecord.quantity);
+        if (inputState.getTradeType().equals("Sell")) { // called by seller:initiatingParty
+            buyer = counterTradeState.getCounterParty();
+            seller = counterTradeState.getInitiatingParty();
+        }
+        else if (inputState.getTradeType().equals("Buy")) { // called by seller:counterParty
+            buyer = counterTradeState.getInitiatingParty();
+            seller = counterTradeState.getCounterParty();
+        }
 
-        if (initialTradeState.getTradeType().equals("Sell")) { // called by seller:initiatingParty
-            buyer = initialTradeState.getCounterParty();
-            seller = initialTradeState.getInitiatingParty();
-            subFlow(new DvPInitiatorFlow(initialTradeState.getStockName(), initialTradeState.getStockQuantity(), buyer, cost));
-        } else if (initialTradeState.getTradeType().equals("Buy")) {
-            buyer = initialTradeState.getInitiatingParty();
-            seller = initialTradeState.getCounterParty();
-            subFlow(new DvPBuyerFlow.BuyStock(counterPartyTradeState, seller, cost));
+        if (getOurIdentity().equals(seller)) { // check that seller is actually the caller
+            subFlow(new DvPInitiatorFlow(counterTradeState.getStockName(), counterTradeState.getStockQuantity(), buyer, counterTradeState.getStockQuantity() * counterTradeState.getStockPrice()));
+            return subFlow(new CounterTradeFlow.CounterInitiator(counterTradeState));
+        } else {
+            throw new RuntimeException("Flow called by unauthorised party.");
         }
         SignedTransaction sigInit = subFlow(new CounterTradeFlow.CounterInitiator(initialTradeState));
         SignedTransaction sig = subFlow(new CounterTradeFlow.CounterInitiator(counterPartyTradeState));
