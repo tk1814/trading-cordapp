@@ -3,7 +3,7 @@ Open the project in Intellij:
 - File -> Open -> trading-cordapp -> build.gradle -> OK -> Open as a Project
 
 To debug PartyA node:
-build nodes and run the party servers -> Run | Edit Configurations -> + -> Remote JVM debug -> Port 5005 -> OK -> enter breakpoints in Flow/Contract/etc.java -> run the debugger
+build nodes and run the party servers -> Run | Edit Configurations -> + -> Remote JVM debug -> Port 5006 -> OK -> enter breakpoints in Flow/Contract/etc.java -> run the debugger
 
 Run in terminal 1:
 ```
@@ -37,7 +37,7 @@ To install UI packages:
 
 To start the react server:
     - cd clients/src/main/webapp
-    - npm install 
+    - npm install --force
     - npm start
 ```
 

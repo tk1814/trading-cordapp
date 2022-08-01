@@ -24,6 +24,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
@@ -222,8 +223,10 @@ public class TradeFlowTests {
         network.runNetwork();
         futureB.get();
 
+        BigDecimal amount = new BigDecimal(TRADING_STOCK_QUANTITY).multiply(new BigDecimal(String.valueOf(STOCK_PRICE)));
+
         // Move Stock to buyer
-        futureA = partyA.startFlow(new DvPInitiatorFlow(STOCK_SYMBOL, TRADING_STOCK_QUANTITY, partyB.getInfo().getLegalIdentities().get(0), TRADING_STOCK_QUANTITY * STOCK_PRICE));
+        futureA = partyA.startFlow(new DvPInitiatorFlow(STOCK_SYMBOL, TRADING_STOCK_QUANTITY, partyB.getInfo().getLegalIdentities().get(0), amount));
         network.runNetwork();
         String moveTx = futureA.get();
 
@@ -294,9 +297,14 @@ public class TradeFlowTests {
         network.runNetwork();
         future.get();
 
+        // Issue Money
+        CordaFuture<String> futuremoneyB = partyB.startFlow(new IssueMoney(CURRENCY, ISSUING_MONEY, partyB.getInfo().getLegalIdentities().get(0)));
+        network.runNetwork();
+         future.get();
+
 
         /**
-         Create trade to sell stocks
+         Create trade to buy stocks
          *
          */
         CordaFuture<SignedTransaction> futureA = partyA.startFlow(new TradeFlow.Initiator(tradeState));
@@ -326,7 +334,7 @@ public class TradeFlowTests {
         System.out.println("matchSignedTx.matchRecords() =  :" + matchStx.toArray());
 
         /**
-         Create trade to buy stocks
+         Create trade to sell stocks
          *
          */
         CordaFuture<SignedTransaction> futureB = partyB.startFlow(new TradeFlow.Initiator(tradeState2));

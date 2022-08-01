@@ -42,30 +42,6 @@ public class CreateTradeQueueFlow {
             participants.remove(creatorParty);
             participants.remove(notary);
 
-//            TreeMap<BuyOrderKey, TradeState> sellQueue = new TreeMap<BuyOrderKey, TradeState>(new Comparator<BuyOrderKey>() {
-//                @Override
-//                public int compare(BuyOrderKey o1, BuyOrderKey o2) {
-//                    //lowest price at first
-//                    BigDecimal data1 = new BigDecimal(o1.price);
-//                    BigDecimal data2 = new BigDecimal(o2.price);
-//                    int result = data1.compareTo(data2);
-//                    result = (result == 0) ? o1.tradeDate.compareTo(o2.tradeDate) : result;
-//                    return result;
-//                }
-//            });
-//
-//            TreeMap<BuyOrderKey, TradeState> buyQueue = new TreeMap<BuyOrderKey, TradeState> (new Comparator<BuyOrderKey>() {
-//                @Override
-//                public int compare(BuyOrderKey o1, BuyOrderKey o2) {
-//                    //highest price as first
-//                    BigDecimal data1 = new BigDecimal(o1.price);
-//                    BigDecimal data2 = new BigDecimal(o2.price);
-//                    int result = data2.compareTo(data1);
-//                    result = (result == 0) ? o1.tradeDate.compareTo(o2.tradeDate) : result;
-//                    return result;
-//                }
-//            });
-
             //create state
             TradeQueueState tradeQueueState = new TradeQueueState(new TreeMap<SellOrderKey, TradeState>(), new TreeMap<BuyOrderKey, TradeState>(),
                     stockName, new UniqueIdentifier(null, UUID.randomUUID()), creatorParty, participants);

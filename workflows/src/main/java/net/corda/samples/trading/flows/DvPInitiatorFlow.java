@@ -34,9 +34,9 @@ public class DvPInitiatorFlow extends FlowLogic<String> {
     private final String name;
     private final int stockQuantity;
     private final Party buyer;
-    private final double cost;
+    private final BigDecimal cost;
 
-    public DvPInitiatorFlow(String name, int stockQuantity, Party buyer, double cost) {
+    public DvPInitiatorFlow(String name, int stockQuantity, Party buyer, BigDecimal cost) {
         this.name = name;
         this.stockQuantity = stockQuantity;
         this.buyer = buyer;
@@ -67,7 +67,7 @@ public class DvPInitiatorFlow extends FlowLogic<String> {
         FlowSession buyerSession = initiateFlow(buyer);
 
         TokenType tokenType = FiatCurrency.Companion.getInstance("USD");
-        Amount<TokenType> costPrice = Amount.fromDecimal(new BigDecimal(cost), tokenType, RoundingMode.HALF_UP);
+        Amount<TokenType> costPrice = Amount.fromDecimal(cost, tokenType);
 
         // Send the stock price to the buyer
         buyerSession.send(costPrice);

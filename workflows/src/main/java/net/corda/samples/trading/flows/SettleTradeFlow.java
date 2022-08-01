@@ -11,6 +11,7 @@ import net.corda.core.transactions.SignedTransaction;
 import net.corda.samples.trading.entity.MatchRecord;
 import net.corda.samples.trading.states.TradeState;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -55,22 +56,20 @@ public class SettleTradeFlow extends FlowLogic<SignedTransaction> {
         //undo
         counterPartyTradeState.setSettlementDate(LocalDateTime.now(ZoneOffset.UTC).toString());
 
+        BigDecimal cost = matchRecord.price.multiply(matchRecord.quantity);
+
         if (initialTradeState.getTradeType().equals("Sell")) { // called by seller:initiatingParty
             buyer = initialTradeState.getCounterParty();
             seller = initialTradeState.getInitiatingParty();
-        } else if (initialTradeState.getTradeType().equals("Buy")) { // called by seller:counterParty
+            subFlow(new DvPInitiatorFlow(initialTradeState.getStockName(), initialTradeState.getStockQuantity(), buyer, cost));
+        } else if (initialTradeState.getTradeType().equals("Buy")) {
             buyer = initialTradeState.getInitiatingParty();
             seller = initialTradeState.getCounterParty();
+            subFlow(new DvPBuyerFlow.BuyStock(counterPartyTradeState, seller, cost));
         }
+        SignedTransaction sigInit = subFlow(new CounterTradeFlow.CounterInitiator(initialTradeState));
+        SignedTransaction sig = subFlow(new CounterTradeFlow.CounterInitiator(counterPartyTradeState));
+        return sig;
 
-        if (getOurIdentity().equals(seller)) { // check that seller is actually the caller
-            subFlow(new DvPInitiatorFlow(initialTradeState.getStockName(), initialTradeState.getStockQuantity(), buyer, initialTradeState.getStockQuantity() * initialTradeState.getStockPrice()));
-            subFlow(new CounterTradeFlow.CounterInitiator(initialTradeState));
-            //return both txIDs
-            return subFlow(new CounterTradeFlow.CounterInitiator(counterPartyTradeState));
-
-        } else {
-            throw new RuntimeException("Flow called by unauthorised party.");
-        }
     }
 }
