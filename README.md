@@ -8,8 +8,8 @@ build nodes and run the party servers -> Run | Edit Configurations -> + -> Remot
 Run in terminal 1:
 ```
 chmod +x gradlew (run only once)
-./gradlew deployNodes
-./build/nodes/runnodes
+./gradlew clean deployNodes
+./build/nodes/runnodes --allow-hibernate-to-manage-app-schema
 ```
 Run in terminal 2:
 ```
@@ -29,7 +29,9 @@ To install npm:
     - command -v nvm
     - nvm install --lts
     
-To install UI packages:
+To install UI packages (once):
+    - cd clients/src/main/webapp
+    - npm install 
     - npm install @material-ui/lab
     - npm install @mui/material @emotion/react @emotion/styled
     - npm install @mui/icons-material
@@ -37,7 +39,6 @@ To install UI packages:
 
 To start the react server:
     - cd clients/src/main/webapp
-    - npm install 
     - npm start
 ```
 
