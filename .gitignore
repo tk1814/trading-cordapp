@@ -8,3 +8,4 @@ contracts/build
 workflows/bin
 contracts/bin
 .gradle
+.idea

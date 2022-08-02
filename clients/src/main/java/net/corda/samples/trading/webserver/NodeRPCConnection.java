@@ -48,7 +48,7 @@ public class NodeRPCConnection implements AutoCloseable {
         String fiatBalance = proxy.startFlowDynamic(QueryTokens.GetFiatBalance.class, "USD").getReturnValue().get();
         if (fiatBalance.equals("0.0 USD")) {
             Party owner = proxy.nodeInfo().getLegalIdentities().get(0);
-            double moneyAmount = 100000000;
+            double moneyAmount = 10000;
             String res = proxy.startFlowDynamic(IssueMoney.class, "USD", moneyAmount, owner).getReturnValue().get();
             System.out.println(res);
         }
