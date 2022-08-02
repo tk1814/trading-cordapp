@@ -1,4 +1,4 @@
-package net.corda.samples.trading;
+package net.corda.samples.trading.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
