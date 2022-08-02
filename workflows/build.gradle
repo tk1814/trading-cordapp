@@ -79,6 +79,7 @@ dependencies {
     // SendGrid
     implementation 'com.sendgrid:sendgrid-java:4.7.0'
     //compile 'com.sendgrid:sendgrid-java:4.7.0'
+    implementation group: 'org.springframework', name: 'spring-web', version: '4.3.11.RELEASE'
 
     // CorDapp dependencies.
 //    compile project(":contracts")
