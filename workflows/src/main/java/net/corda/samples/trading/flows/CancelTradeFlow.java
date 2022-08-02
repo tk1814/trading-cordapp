@@ -36,7 +36,7 @@ public class CancelTradeFlow {
         @Suspendable
         public SignedTransaction call() throws FlowException {
             // Obtain a reference to the notary we want to use.
-            final Party notary = getServiceHub().getNetworkMapCache().getNotary(CordaX500Name.parse("O=Notary Service 0,L=Zurich,C=CH"));
+            final Party notary = getServiceHub().getNetworkMapCache().getNotaryIdentities().get(0);
 
             // Generate a transaction by taking the current state
             List<StateAndRef<TradeState>> inputTradeStateList = getServiceHub().getVaultService().queryBy(TradeState.class).getStates().stream()

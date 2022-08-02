@@ -33,7 +33,7 @@ public class CreateTradeQueueFlow {
         @Override
         public SignedTransaction call() throws FlowException {
 
-            final Party notary = getServiceHub().getNetworkMapCache().getNotary(CordaX500Name.parse("O=Notary,L=London,C=GB"));
+            final Party notary = getServiceHub().getNetworkMapCache().getNotaryIdentities().get(0);
             Party creatorParty = getOurIdentity();
 
             List<Party> participants = getServiceHub().getNetworkMapCache().getAllNodes().stream()

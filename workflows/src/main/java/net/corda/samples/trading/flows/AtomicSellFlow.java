@@ -89,7 +89,7 @@ public interface AtomicSellFlow {
             Amount<TokenType> costAmount = Amount.fromDecimal(cost, currencyTokenType);
 
             //move stock tokens
-            final Party notary = getServiceHub().getNetworkMapCache().getNotary(CordaX500Name.parse("O=Notary,L=London,C=GB"));
+            final Party notary = getServiceHub().getNetworkMapCache().getNotaryIdentities().get(0);
             TransactionBuilder txBuilder = new TransactionBuilder(notary);
 
             Amount<TokenType> amount = new Amount<>(sellerTrade.getStockQuantity(), stockPointer);

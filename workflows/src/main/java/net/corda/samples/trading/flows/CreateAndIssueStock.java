@@ -47,7 +47,7 @@ public class CreateAndIssueStock extends FlowLogic<String> {
     @Suspendable
     public String call() throws FlowException {
 
-        final Party notary = getServiceHub().getNetworkMapCache().getNotary(CordaX500Name.parse("O=Notary Service 0,L=Zurich,C=CH"));
+        final Party notary = getServiceHub().getNetworkMapCache().getNotaryIdentities().get(0);
 
         // Retrieving the observers
         List<Party> observers = getServiceHub().getNetworkMapCache().getAllNodes().stream()
@@ -95,6 +95,7 @@ public class CreateAndIssueStock extends FlowLogic<String> {
 
         // Finally, use the build-in flow to issue the stock tokens. Observer parties will record a copy of the transaction
         SignedTransaction stx = subFlow(new IssueTokens(ImmutableList.of(stockToken), observers));
+        subFlow(new CreateTradeQueueFlow.CreateTradeQueueInitiator(name));
         return "\nGenerated " + this.issueVol + " stocks." + " Transaction ID: " + stx.getId();
     }
 }

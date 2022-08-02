@@ -127,7 +127,7 @@ public class TradeState implements ContractState, LinearState, SchedulableState 
         this.counterParty = counterParty;
     }
 
-    public void setExpirationDate(String expirationDate) {
+    public void setExpirationDate(LocalDateTime expirationDate) {
         this.expirationDate = expirationDate;
     }
 
@@ -135,11 +135,11 @@ public class TradeState implements ContractState, LinearState, SchedulableState 
         this.tradeStatus = tradeStatus;
     }
 
-    public void setTradeDate(String tradeDate) {
+    public void setTradeDate(LocalDateTime tradeDate) {
         this.tradeDate = tradeDate;
     }
 
-    public void setSettlementDate(String settlementDate) {
+    public void setSettlementDate(LocalDateTime settlementDate) {
         this.settlementDate = settlementDate;
     }
 

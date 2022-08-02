@@ -83,7 +83,7 @@ public class TradeFlow {
              *
              *  * - For production you always want to use Method 2 as it guarantees the expected notary is returned.
              */
-            final Party notary = getServiceHub().getNetworkMapCache().getNotary(CordaX500Name.parse("O=Notary Service 0,L=Zurich,C=CH"));
+            final Party notary = getServiceHub().getNetworkMapCache().getNotaryIdentities().get(0);
 
             // Stage 1.
             progressTracker.setCurrentStep(GENERATING_TRANSACTION);

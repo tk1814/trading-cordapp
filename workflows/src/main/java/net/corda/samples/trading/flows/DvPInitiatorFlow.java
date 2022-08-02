@@ -48,7 +48,7 @@ public class DvPInitiatorFlow extends FlowLogic<String> {
     public String call() throws FlowException {
 
         // Obtain a reference to a notary we wish to use.
-        final Party notary = getServiceHub().getNetworkMapCache().getNotary(CordaX500Name.parse("O=Notary,L=London,C=GB"));
+        final Party notary = getServiceHub().getNetworkMapCache().getNotaryIdentities().get(0);
 
         // To get the transferring stock, we get the StockState from the vault and get its pointer
         TokenPointer<FungibleStockState> stockPointer = CustomQuery.queryStockPointer(name, getServiceHub());

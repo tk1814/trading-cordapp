@@ -423,10 +423,10 @@ class CreateTrade extends Component {
 
     async getDateTime(withMilliseconds) {
         let formattedDate;
-        const result = await fetch("http://worldtimeapi.org/api/timezone/" + location)
+        const result = await fetch("https://worldtimeapi.org/api/timezone/" + location)
             .then(response => response.json())
             .then(data => {
-                let datetime = data.datetime;
+                let datetime = data.utc_datetime;
                 if (withMilliseconds) {
                     formattedDate = datetime.slice(0, 23)
                 } else {

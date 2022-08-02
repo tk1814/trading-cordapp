@@ -74,7 +74,7 @@ public class TradeFlowTests {
                         TestCordapp.findCordapp("com.r3.corda.lib.tokens.contracts"),
                         TestCordapp.findCordapp("com.r3.corda.lib.tokens.workflows")
                 )).withThreadPerNode(false)
-                .withNotarySpecs(ImmutableList.of(new MockNetworkNotarySpec(CordaX500Name.parse("O=Notary,L=London,C=GB")))));
+                .withNotarySpecs(ImmutableList.of(new MockNetworkNotarySpec(CordaX500Name.parse("O=Notary Service 0,L=Zurich,C=CH")))));
 
         partyA = network.createPartyNode(PARTY_A.getName());
         partyB = network.createPartyNode(PARTY_B.getName());

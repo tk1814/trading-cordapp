@@ -59,7 +59,7 @@ public interface DvPBuyerFlow {
             List<StateAndRef<FungibleToken>> stockInputs = subFlow(new ReceiveStateAndRefFlow<>(sellerSession));
             final List<FungibleToken> stockOutputs = sellerSession.receive(List.class).unwrap(it -> it);
 
-            final Party notary = getServiceHub().getNetworkMapCache().getNotary(CordaX500Name.parse("O=Notary,L=London,C=GB"));
+            final Party notary = getServiceHub().getNetworkMapCache().getNotaryIdentities().get(0);
             TransactionBuilder txBuilder = new TransactionBuilder(notary);
             MoveTokensUtilities.addMoveTokens(txBuilder, stockInputs, stockOutputs);
 

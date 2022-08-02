@@ -39,7 +39,7 @@ public class MatchOrdersFlow {
         @Override
         public List<MatchRecord> call() throws FlowException {
 
-            final Party notary = getServiceHub().getNetworkMapCache().getNotary(CordaX500Name.parse("O=Notary,L=London,C=GB"));
+            final Party notary = getServiceHub().getNetworkMapCache().getNotaryIdentities().get(0);
             Party initiateParty = getOurIdentity();
 
             // Query the vault to fetch a list of all AuctionState states, and filter the results based on the auctionId

@@ -211,3 +211,18 @@ To restart a node:
 2. delete these folders: ```rm -r artemis/ logs/ per*```
 3. start the node again, and add the run-migration-script sub-command: ``` run-migration-scripts --app-schemas --core-schemas```
 
+Network bootstrapper (not tested):  
+```
+1. Download the 4.8.5 network bootstrapper .jar from https://software.r3.com/ui/native/corda-releases/net/corda/corda-tools-network-bootstrapper.
+2. In a new directory called nodes2/ put every node's .conf file like this:
+PartyA_node.conf 
+PartyB_node.conf
+Notary0_node.conf
+Notary1_node.conf
+Notary2_node.conf
+Notary3_node.conf
+3. Change the ports to the vm ip
+4. Outside of nodes2/ run:
+java -jar corda-tools-network-bootstrapper-4.8.5.jar --dir nodes2/
+5. add the cordapps/ directory to every node folder
+```

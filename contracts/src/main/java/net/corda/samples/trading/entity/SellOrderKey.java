@@ -5,14 +5,15 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @CordaSerializable
 public class SellOrderKey implements Comparable<SellOrderKey>, Serializable {
 
-    public final String tradeDate;
+    public final LocalDateTime tradeDate;
     public final double price;
 
-    public String getTradeDate() {
+    public LocalDateTime getTradeDate() {
         return tradeDate;
     }
 
@@ -20,7 +21,7 @@ public class SellOrderKey implements Comparable<SellOrderKey>, Serializable {
         return price;
     }
 
-    public SellOrderKey(String tradeDate, double price) {
+    public SellOrderKey(LocalDateTime tradeDate, double price) {
         this.tradeDate = tradeDate;
         this.price = price;
     }
