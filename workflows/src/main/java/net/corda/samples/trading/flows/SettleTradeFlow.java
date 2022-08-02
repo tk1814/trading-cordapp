@@ -1,20 +1,17 @@
 package net.corda.samples.trading.flows;
 
 import co.paralleluniverse.fibers.Suspendable;
-import com.fasterxml.jackson.databind.JsonNode;
 import net.corda.core.flows.FlowException;
 import net.corda.core.flows.FlowLogic;
 import net.corda.core.flows.StartableByRPC;
 import net.corda.core.identity.Party;
 import net.corda.core.transactions.SignedTransaction;
+import net.corda.samples.trading.DateTimeService;
 import net.corda.samples.trading.entity.MatchRecord;
 import net.corda.samples.trading.states.TradeState;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 
 /**
  * This purpose of these flows is to settle the trade which includes:
@@ -33,19 +30,11 @@ public class SettleTradeFlow extends FlowLogic<SignedTransaction> {
         this.matchRecord = matchRecord;
     }
 
-
     @Override
     @Suspendable
     public SignedTransaction call() throws FlowException {
-        LocalDateTime settlementDate;
 
-        ResponseEntity<JsonNode> response = new RestTemplate().getForEntity("https://worldtimeapi.org/api/timezone/Etc/UTC", JsonNode.class);
-        if (response.getStatusCodeValue() == 200) {
-            String datetime = response.getBody().get("utc_datetime").toString().substring(1, 24);
-            settlementDate = LocalDateTime.parse(datetime);
-        } else {
-            settlementDate = LocalDateTime.now(ZoneOffset.UTC);
-        }
+        LocalDateTime settlementDate = getServiceHub().cordaService(DateTimeService.class).getDateTime();
 
         TradeState initialTradeState = matchRecord.currentOrder;
         TradeState counterPartyTradeState = matchRecord.makerOrder;

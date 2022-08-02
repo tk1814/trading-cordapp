@@ -79,7 +79,6 @@ dependencies {
     // SendGrid
     implementation 'com.sendgrid:sendgrid-java:4.7.0'
     //compile 'com.sendgrid:sendgrid-java:4.7.0'
-    implementation group: 'org.springframework', name: 'spring-web', version: '4.3.11.RELEASE'
 
     // CorDapp dependencies.
 //    compile project(":contracts")
@@ -101,6 +100,9 @@ dependencies {
     configurations.all {
         exclude group: "com.github.bft-smart", module: 'library'
     }
+
+    // OkHTTP: A simple HTTP library.
+    compile "com.squareup.okhttp3:okhttp:3.5.0"
 
 }
 

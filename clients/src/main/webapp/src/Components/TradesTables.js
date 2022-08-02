@@ -41,7 +41,7 @@ const TradeTables = (props) => (
                             // don't show expiration date
                             // display only trades that the current node initiated or accepted
                             (row.tradeStatus === "Accepted" || row.tradeStatus === "Cancelled" || row.tradeStatus === "Expired") &&
-                            (row.initiatingParty === props.getPartyfromPort() || row.counterParty === props.getPartyfromPort()) &&
+                            (row.initiatingParty === props.getPartyfromPort()) &&
                             <TableRow key={index} sx={{'&:last-child td, &:last-child th': {border: 0}}}>
                                 <TableCell key={0} component="th" scope="row">{row.initiatingParty}</TableCell>
                                 {(row.counterParty === "null") ?
