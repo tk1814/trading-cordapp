@@ -15,6 +15,7 @@ import net.corda.core.utilities.ProgressTracker;
 import net.corda.samples.trading.contracts.TradeContract;
 import net.corda.samples.trading.states.TradeState;
 
+import java.math.BigDecimal;
 import java.security.PublicKey;
 import java.util.Arrays;
 import java.util.List;
@@ -39,7 +40,7 @@ public class CounterTradeFlow {
     @StartableByRPC
     public static class CounterInitiator extends FlowLogic<SignedTransaction> {
 
-        private final TradeState counterTradeState;
+        private final TradeState tradeState;
 
         private final ProgressTracker.Step GENERATING_TRANSACTION = new ProgressTracker.Step("Generating transaction based on new Trade.");
         private final ProgressTracker.Step VERIFYING_TRANSACTION = new ProgressTracker.Step("Verifying contract constraints.");
@@ -70,7 +71,7 @@ public class CounterTradeFlow {
         }
 
         public CounterInitiator(TradeState tradeState) {
-            this.counterTradeState = tradeState;
+            this.tradeState = tradeState;
         }
 
         @Override
@@ -84,23 +85,45 @@ public class CounterTradeFlow {
 
             // Generate a transaction by taking the current state and check that the incoming counterTradeState matches with the TradeState in the vault
             List<StateAndRef<TradeState>> inputTradeStateList = getServiceHub().getVaultService().queryBy(TradeState.class).getStates().stream()
-                    .filter(x -> !x.getState().getData().getInitiatingParty().equals(counterTradeState.getCounterParty()))
+                    .filter(x -> !x.getState().getData().getInitiatingParty().equals(tradeState.getCounterParty()))
                     .filter(x -> x.getState().getData().getTradeStatus().equalsIgnoreCase("Pending"))
-                    .filter(x -> x.getState().getData().getLinearId().equals(counterTradeState.getLinearId()))
+                    .filter(x -> x.getState().getData().getLinearId().equals(tradeState.getLinearId()))
                     .collect(Collectors.toList());
 
             if (inputTradeStateList.isEmpty()) {
-                throw new RuntimeException("Trade state with trade ID: " + counterTradeState.getLinearId() + " was not found in the vault.");
+                throw new RuntimeException("Trade state with trade ID: " + tradeState.getLinearId() + " was not found in the vault.");
             }
             StateAndRef<TradeState> inputTradeState = inputTradeStateList.get(0);
+            TradeState input = inputTradeState.getState().getData();
 
             TradeContract.Commands.CounterTrade command = new TradeContract.Commands.CounterTrade();
-            List<PublicKey> requiredSigns = ImmutableList.of(counterTradeState.getInitiatingParty().getOwningKey(), counterTradeState.getCounterParty().getOwningKey());
+            List<PublicKey> requiredSigns = ImmutableList.of(tradeState.getInitiatingParty().getOwningKey(), tradeState.getCounterParty().getOwningKey());
 
-            TransactionBuilder txBuilder = new TransactionBuilder(notary)
-                    .addOutputState(counterTradeState, TradeContract.ID)
-                    .addInputState(inputTradeState)
-                    .addCommand(command, requiredSigns);
+            TransactionBuilder txBuilder;
+            //if the match quantity is not the same as the input quantity, there should be one more output to be match in the later transaction
+            if (input.getStockQuantity() > tradeState.getStockQuantity()) {
+                int unConsumedQuantity = new BigDecimal(input.getStockQuantity()).subtract(new BigDecimal(tradeState.getStockQuantity())).intValue();
+
+                TradeState unConsumedTradeState = new TradeState(tradeState.getInitiatingParty(), tradeState.getCounterParty(), tradeState.getOrderType(),
+                        tradeState.getTradeType(), tradeState.stockName, input.getStockPrice(), unConsumedQuantity, input.getExpirationDate(),
+                        input.getTradeStatus(), input.tradeDate, input.settlementDate, input.getLinearId());
+
+                 txBuilder = new TransactionBuilder(notary)
+                        .addOutputState(tradeState, TradeContract.ID)
+                        .addOutputState(unConsumedTradeState,TradeContract.ID)
+                        .addInputState(inputTradeState)
+                        .addCommand(command, requiredSigns);
+
+            } else if (input.getStockQuantity() == tradeState.getStockQuantity()) {
+                 txBuilder = new TransactionBuilder(notary)
+                        .addOutputState(tradeState, TradeContract.ID)
+                        .addInputState(inputTradeState)
+                        .addCommand(command, requiredSigns);
+            } else {
+                throw new RuntimeException("stock name" + input.getStockName() + " encountered error in transaction: " +
+                        "intput has " + input.getStockQuantity() + " of stocks while output has " + tradeState.getStockQuantity());
+            }
+
 
             // Stage 2.
             progressTracker.setCurrentStep(VERIFYING_TRANSACTION);
@@ -114,21 +137,22 @@ public class CounterTradeFlow {
             progressTracker.setCurrentStep(GATHERING_SIGS);
             // Send the state to the initiating party, and receive it back with their signature.
 
-            FlowSession otherPartyFlow;
-            if (getOurIdentity().equals(counterTradeState.getInitiatingParty()))
-                otherPartyFlow = initiateFlow(counterTradeState.getCounterParty());
-            else if (getOurIdentity().equals(counterTradeState.getCounterParty()))
-                otherPartyFlow = initiateFlow(counterTradeState.getInitiatingParty());
+            FlowSession flowSession;
+//            FlowSession flowSession = initiateFlow(tradeState.getCounterParty());
+            if (getOurIdentity().equals(tradeState.getInitiatingParty()))
+                flowSession = initiateFlow(tradeState.getCounterParty());
+            else if (getOurIdentity().equals(tradeState.getCounterParty()))
+                flowSession = initiateFlow(tradeState.getInitiatingParty());
             else
                 throw new RuntimeException("Trade settlement flow is called by a third party - not involved in the transaction");
 
             SignedTransaction fullySignedTx = subFlow(
-                    new CollectSignaturesFlow(partSignedTx, ImmutableSet.of(otherPartyFlow), GATHERING_SIGS.childProgressTracker()));
+                    new CollectSignaturesFlow(partSignedTx, ImmutableSet.of(flowSession), GATHERING_SIGS.childProgressTracker()));
 
             // Stage 5.
             progressTracker.setCurrentStep(FINALISING_TRANSACTION);
             // Notarise and record the transaction in both parties' vaults.
-            return subFlow(new FinalityFlow(fullySignedTx, Arrays.asList(otherPartyFlow), FINALISING_TRANSACTION.childProgressTracker()));
+            return subFlow(new FinalityFlow(fullySignedTx, Arrays.asList(flowSession), FINALISING_TRANSACTION.childProgressTracker()));
         }
     }
 

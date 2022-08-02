@@ -34,9 +34,9 @@ public class DvPInitiatorFlow extends FlowLogic<String> {
     private final String name;
     private final int stockQuantity;
     private final Party buyer;
-    private final double cost;
+    private final BigDecimal cost;
 
-    public DvPInitiatorFlow(String name, int stockQuantity, Party buyer, double cost) {
+    public DvPInitiatorFlow(String name, int stockQuantity, Party buyer, BigDecimal cost) {
         this.name = name;
         this.stockQuantity = stockQuantity;
         this.buyer = buyer;
@@ -48,7 +48,7 @@ public class DvPInitiatorFlow extends FlowLogic<String> {
     public String call() throws FlowException {
 
         // Obtain a reference to a notary we wish to use.
-        final Party notary = getServiceHub().getNetworkMapCache().getNotary(CordaX500Name.parse("O=Notary Service 0,L=Zurich,C=CH"));
+        final Party notary = getServiceHub().getNetworkMapCache().getNotary(CordaX500Name.parse("O=Notary,L=London,C=GB"));
 
         // To get the transferring stock, we get the StockState from the vault and get its pointer
         TokenPointer<FungibleStockState> stockPointer = CustomQuery.queryStockPointer(name, getServiceHub());
@@ -67,7 +67,7 @@ public class DvPInitiatorFlow extends FlowLogic<String> {
         FlowSession buyerSession = initiateFlow(buyer);
 
         TokenType tokenType = FiatCurrency.Companion.getInstance("USD");
-        Amount<TokenType> costPrice = Amount.fromDecimal(new BigDecimal(cost), tokenType, RoundingMode.HALF_UP);
+        Amount<TokenType> costPrice = Amount.fromDecimal(cost, tokenType);
 
         // Send the stock price to the buyer
         buyerSession.send(costPrice);

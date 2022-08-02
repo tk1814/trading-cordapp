@@ -3,13 +3,13 @@ Open the project in Intellij:
 - File -> Open -> trading-cordapp -> build.gradle -> OK -> Open as a Project
 
 To debug PartyA node:
-build nodes and run the party servers -> Run | Edit Configurations -> + -> Remote JVM debug -> Port 5005 -> OK -> enter breakpoints in Flow/Contract/etc.java -> run the debugger
+build nodes and run the party servers -> Run | Edit Configurations -> + -> Remote JVM debug -> Port 5006 -> OK -> enter breakpoints in Flow/Contract/etc.java -> run the debugger
 
 Run in terminal 1:
 ```
 chmod +x gradlew (run only once)
-./gradlew clean deployNodes
-./build/nodes/runnodes --allow-hibernate-to-manage-app-schema
+./gradlew deployNodes
+./build/nodes/runnodes
 ```
 Run in terminal 2:
 ```
@@ -29,9 +29,7 @@ To install npm:
     - command -v nvm
     - nvm install --lts
     
-To install UI packages (once):
-    - cd clients/src/main/webapp
-    - npm install 
+To install UI packages:
     - npm install @material-ui/lab
     - npm install @mui/material @emotion/react @emotion/styled
     - npm install @mui/icons-material
@@ -39,6 +37,7 @@ To install UI packages (once):
 
 To start the react server:
     - cd clients/src/main/webapp
+    - npm install 
     - npm start
 ```
 

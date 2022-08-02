@@ -119,6 +119,34 @@ public class TradeState implements ContractState, LinearState, SchedulableState 
         return stockName;
     }
 
+    public void setInitiatingParty(Party initiatingParty) {
+        this.initiatingParty = initiatingParty;
+    }
+
+    public void setCounterParty(@Nullable Party counterParty) {
+        this.counterParty = counterParty;
+    }
+
+    public void setExpirationDate(String expirationDate) {
+        this.expirationDate = expirationDate;
+    }
+
+    public void setTradeStatus(String tradeStatus) {
+        this.tradeStatus = tradeStatus;
+    }
+
+    public void setTradeDate(String tradeDate) {
+        this.tradeDate = tradeDate;
+    }
+
+    public void setSettlementDate(String settlementDate) {
+        this.settlementDate = settlementDate;
+    }
+
+    public void setLinearId(UniqueIdentifier linearId) {
+        this.linearId = linearId;
+    }
+
     /*
      * A participant is any party that should be notified
      * when the state is created or consumed.

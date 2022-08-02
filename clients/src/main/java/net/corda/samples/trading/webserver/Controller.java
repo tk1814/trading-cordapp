@@ -12,6 +12,7 @@ import net.corda.core.identity.Party;
 import net.corda.core.messaging.CordaRPCOps;
 import net.corda.core.node.NodeInfo;
 import net.corda.core.transactions.SignedTransaction;
+import net.corda.samples.trading.entity.MatchRecord;
 import net.corda.samples.trading.flows.*;
 import net.corda.samples.trading.states.TradeState;
 import org.springframework.http.HttpStatus;
@@ -107,6 +108,12 @@ public class Controller {
                 SignedTransaction signedTx = proxy.startTrackedFlowDynamic(TradeFlow.Initiator.class, tradeState).getReturnValue().get();
                 System.out.println("signedTx.getId() =  :" + signedTx.getId());
                 resp.addProperty("Response", "Transaction id " + signedTx.getId() + " committed to ledger.\n");
+
+                //add match
+                List<MatchRecord> matchRecords = proxy.startTrackedFlowDynamic(MatchOrdersFlow.MatchOrdersInitiator.class, tradeState).getReturnValue().get();
+                System.out.println("matchSignedTx.matchRecords() =  :" + matchRecords.toArray());
+
+
                 return ResponseEntity.status(HttpStatus.ACCEPTED).contentType(MediaType.APPLICATION_JSON).body(resp.toString());
 
             } catch (Exception ex) {

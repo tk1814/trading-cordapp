@@ -70,7 +70,7 @@ public class TradeContract implements Contract {
         } else if (commandType instanceof TradeContract.Commands.CounterTrade) {
             requireThat(require -> {
                 // Generic constraints around the Trade transaction.
-                require.using("Only one output state should be created.", outputs.size() == 1);
+                //require.using("Only one output state should be created.", outputs.size() == 1);
                 TradeState output = (TradeState) outputs.get(0);
 
                 require.using("The creating party and the counter party cannot be the same entity.", output.initiatingParty != output.counterParty);
