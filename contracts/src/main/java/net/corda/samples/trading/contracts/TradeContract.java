@@ -1,9 +1,6 @@
 package net.corda.samples.trading.contracts;
 
-import net.corda.core.contracts.Command;
-import net.corda.core.contracts.CommandData;
-import net.corda.core.contracts.Contract;
-import net.corda.core.contracts.ContractState;
+import net.corda.core.contracts.*;
 import net.corda.core.transactions.LedgerTransaction;
 import org.jetbrains.annotations.NotNull;
 
@@ -60,10 +57,17 @@ public class TradeContract implements Contract {
                 // require.using("All the participants must be signers.", command.signers.containsAll(out.participants.map { it.owningKey }));
 
                 // Trade-specific constraints.
-                //  require.using("The sell quantity and the buy quantity cannot be the same entity.", output.sellQuantity != output.buyQuantity);
+                require.using("InitiatingParty must sign Trade.", requiredSigners.contains(output.getInitiatingParty().getOwningKey()));
+                require.using("Transaction must have no counterparty.", output.counterParty == null);
+                require.using("The Trade's order type must be a pending or market order.", output.orderType.equals("Pending Order") || output.orderType.equals("Market Order"));
+                require.using("The Trade's type must be a buy or sell operation.", output.tradeType.equals("Sell") || output.tradeType.equals("Buy"));
+                require.using("The Trade must have a stock name.", !output.stockName.isEmpty());
                 require.using("The Trade's stock price must be non-negative.", output.stockPrice > 0);
                 require.using("The Trade's stock quantity must be positive.", output.stockQuantity > 0);
-                require.using("InitiatingParty must sign Trade", requiredSigners.contains(output.getInitiatingParty().getOwningKey()));
+                require.using("Transaction must have an expiration date.", output.expirationDate != null);
+                require.using("The Trade's status must be Pending.", output.tradeStatus.equals("Pending"));
+                require.using("Transaction must have a trade date.", output.tradeDate != null);
+                require.using("Transaction must have no settlement date.", output.settlementDate == null);
                 return null;
             });
 
@@ -72,16 +76,16 @@ public class TradeContract implements Contract {
                 // Generic constraints around the Trade transaction.
                 //require.using("Only one output state should be created.", outputs.size() == 1);
                 TradeState output = (TradeState) outputs.get(0);
-
                 require.using("The creating party and the counter party cannot be the same entity.", output.initiatingParty != output.counterParty);
-                // require.using("All of the participants must be signers.", command.signers.containsAll(output.participants.map { it.owningKey }));
 
                 // Trade-specific constraints.
-                //  require.using("The sell quantity and the buy quantity cannot be the same entity.", output.sellQuantity != output.buyQuantity);
                 require.using("The Trade's stock price must be non-negative.", output.stockPrice > 0);
                 require.using("The Trade's stock quantity must be positive.", output.stockQuantity > 0);
-                require.using("InitiatingParty must sign Trade", requiredSigners.contains(output.getInitiatingParty().getOwningKey()));
-                require.using("CounterParty must sign Trade", requiredSigners.contains(output.getCounterParty().getOwningKey()));
+                require.using("InitiatingParty must sign Trade.", requiredSigners.contains(output.getInitiatingParty().getOwningKey()));
+                require.using("CounterParty must not be empty.", output.counterParty != null);
+                require.using("CounterParty must sign Trade.", requiredSigners.contains(output.getCounterParty().getOwningKey()));
+                require.using("The Trade's status must be accepted.", output.tradeStatus.equals("Accepted"));
+                require.using("Transaction must have a settlement date.", output.settlementDate != null);
                 return null;
             });
 
@@ -92,11 +96,13 @@ public class TradeContract implements Contract {
                 TradeState output = (TradeState) outputs.get(0);
 
                 require.using("The counter party should be null.", output.counterParty == null);
+                require.using("Transaction must have no settlement date.", output.settlementDate == null);
 
                 // Trade-specific constraints.
                 require.using("The Trade's stock price must be non-negative.", output.stockPrice > 0);
                 require.using("The Trade's stock quantity must be positive.", output.stockQuantity > 0);
-                require.using("InitiatingParty must sign Trade", requiredSigners.contains(output.getInitiatingParty().getOwningKey()));
+                require.using("InitiatingParty must sign Trade.", requiredSigners.contains(output.getInitiatingParty().getOwningKey()));
+                require.using("The Trade's status must be cancelled or expired.", output.tradeStatus.equals("Cancelled") || output.tradeStatus.equals("Expired"));
                 return null;
             });
 

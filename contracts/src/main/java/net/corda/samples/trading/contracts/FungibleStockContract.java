@@ -20,7 +20,7 @@ public class FungibleStockContract extends EvolvableTokenContract implements Con
     public void verify(@NotNull LedgerTransaction tx) throws IllegalArgumentException {
         FungibleStockState outputState = (FungibleStockState) tx.getOutput(0);
         if (!(tx.getCommand(0).getSigners().contains(outputState.getIssuer().getOwningKey())))
-            throw new IllegalArgumentException("Company Signature Required");
+            throw new IllegalArgumentException("Issuer Signature Required");
         CommandWithParties<EvolvableTokenTypeCommand> command = requireSingleCommand(tx.getCommands(), EvolvableTokenTypeCommand.class);
         if (command.getValue() instanceof com.r3.corda.lib.tokens.contracts.commands.Create) {
             additionalCreateChecks(tx);
@@ -39,8 +39,9 @@ public class FungibleStockContract extends EvolvableTokenContract implements Con
         FungibleStockState createdStockState = tx.outputsOfType(FungibleStockState.class).get(0);
 
         requireThat(req -> {
-            //Validations when creating a new stock
+            // Validations when creating a new stock
             req.using("Stock name must not be empty", (!createdStockState.getName().isEmpty()));
+            req.using("Stock issuer must not be empty", (createdStockState.getIssuer() != null));
             return null;
         });
     }
@@ -52,10 +53,9 @@ public class FungibleStockContract extends EvolvableTokenContract implements Con
         FungibleStockState output = tx.outputsOfType(FungibleStockState.class).get(0);
 
         requireThat(req -> {
-            //Validations when a stock is updated, ie. AnnounceDividend (UpdateEvolvableToken)
+            // Validations when a stock is updated
             req.using("Stock Name must not be changed.", input.getName().equals(output.getName()));
-            req.using("Stock Company must not be changed.", input.getIssuer().equals(output.getIssuer()));
-
+            req.using("Stock Issuer must not be changed.", input.getIssuer().equals(output.getIssuer()));
             req.using("Stock FractionDigits must not be changed.", input.getFractionDigits() == output.getFractionDigits());
             return null;
         });
