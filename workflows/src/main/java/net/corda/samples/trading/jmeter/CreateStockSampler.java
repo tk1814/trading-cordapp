@@ -13,7 +13,7 @@ import java.util.Set;
 public class CreateStockSampler extends AbstractSampler {
 
     public final static String STOCK_SYMBOL = "SP500";
-    public final static Long STOCK_AMOUNT = 0L;
+    public final static Long STOCK_AMOUNT = 1L;
 
     @NotNull
     @Override

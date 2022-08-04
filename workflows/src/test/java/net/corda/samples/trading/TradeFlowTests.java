@@ -12,6 +12,9 @@ import net.corda.core.crypto.SecureHash;
 import net.corda.core.identity.CordaX500Name;
 import net.corda.core.identity.Party;
 import net.corda.core.node.NetworkParameters;
+import net.corda.core.node.services.Vault;
+import net.corda.core.node.services.vault.PageSpecification;
+import net.corda.core.node.services.vault.QueryCriteria;
 import net.corda.core.transactions.SignedTransaction;
 import net.corda.samples.trading.entity.MatchRecord;
 import net.corda.samples.trading.flows.*;
@@ -31,11 +34,15 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static java.util.Collections.singletonList;
+import static net.corda.core.node.services.vault.QueryCriteriaUtils.DEFAULT_PAGE_NUM;
+import static net.corda.core.node.services.vault.QueryCriteriaUtils.MAX_PAGE_SIZE;
 
 public class TradeFlowTests {
 
@@ -90,7 +97,7 @@ public class TradeFlowTests {
                 LocalDateTime.parse(tradeDate), null, LINEAR_ID);
         tradeState2 = new TradeState(partyB.getInfo().getLegalIdentities().get(0), null, "Pending Order",
                 "Buy", STOCK_SYMBOL, STOCK_PRICE, TRADING_STOCK_QUANTITY, LocalDateTime.parse(expirationDate + ":00.00"), "Pending",
-                LocalDateTime.parse(tradeDate), null, LINEAR_ID);
+                LocalDateTime.parse(tradeDate), null, new UniqueIdentifier(null, UUID.fromString("7231f549-9c1b-041f-90dd-1dc728fcbafc")));
         cancelTradeState = new TradeState(partyA.getInfo().getLegalIdentities().get(0), null, "Pending Order",
                 "Sell", STOCK_SYMBOL, STOCK_PRICE, TRADING_STOCK_QUANTITY, LocalDateTime.parse(expirationDate + ":00.00"), "Cancelled",
                 LocalDateTime.parse(tradeDate), null, LINEAR_ID);
@@ -300,7 +307,7 @@ public class TradeFlowTests {
         // Issue Money
         CordaFuture<String> futuremoneyB = partyB.startFlow(new IssueMoney(CURRENCY, ISSUING_MONEY, partyB.getInfo().getLegalIdentities().get(0)));
         network.runNetwork();
-         future.get();
+        future.get();
 
 
         /**
@@ -361,6 +368,100 @@ public class TradeFlowTests {
         System.out.println("test=======" + tradeQueueStateB);
         System.out.println("matchSignedTx.matchRecords() =  :" + Arrays.asList(matchBStx).toString());
 
+
+    }
+
+    @Test
+    public void matchOrdersPageSpecFlowTest() throws ExecutionException, InterruptedException {
+
+        // Issue Stock to seller
+        CordaFuture<String> future = partyA.startFlow(new CreateAndIssueStock(STOCK_SYMBOL, ISSUING_STOCK_QUANTITY));
+        network.runNetwork();
+        future.get();
+
+        // Issue Money
+        CordaFuture<String> futuremoneyB = partyB.startFlow(new IssueMoney(CURRENCY, ISSUING_MONEY, partyB.getInfo().getLegalIdentities().get(0)));
+        network.runNetwork();
+        future.get();
+
+        /**
+         Create multiple trades (>200)
+         *
+         */
+        for (int i = 0; i < 202; i++) {
+            partyA.startFlow(new TradeFlow.Initiator(new TradeState(partyA.getInfo().getLegalIdentities().get(0), null, "Pending Order",
+                    "Sell", STOCK_SYMBOL, STOCK_PRICE, TRADING_STOCK_QUANTITY, LocalDateTime.parse(expirationDate + ":00.00"), "Pending",
+                    LocalDateTime.parse(tradeDate), null, new UniqueIdentifier())));
+        }
+
+        CordaFuture<SignedTransaction> futureA = partyA.startFlow(new TradeFlow.Initiator(tradeState));
+        network.runNetwork();
+        SignedTransaction stx = futureA.get();
+        SecureHash stxID = stx.getId();
+
+        // Check if initiator and observer have recorded the transaction
+        SignedTransaction initiatorTx = partyA.getServices().getValidatedTransactions().getTransaction(stxID);
+        SignedTransaction observerTx = partyB.getServices().getValidatedTransactions().getTransaction(stxID);
+        assertNotNull(initiatorTx);
+        assertNotNull(observerTx);
+        assertEquals(initiatorTx, observerTx);
+
+        // Retrieve trade state from initiator's vault
+        List<UniqueIdentifier> linearId = singletonList(tradeState.getLinearId());
+        QueryCriteria linearCriteriaAll = new QueryCriteria.LinearStateQueryCriteria(null, linearId, Vault.StateStatus.UNCONSUMED, null);
+        PageSpecification pageSpec = new PageSpecification(DEFAULT_PAGE_NUM, MAX_PAGE_SIZE);
+        Vault.Page<TradeState> results = partyA.getServices().getVaultService().queryBy(TradeState.class, linearCriteriaAll, pageSpec);
+        List<StateAndRef<TradeState>> remainingTradeStatesPages = results.getStates().stream()
+                .filter(x -> x.getState().getData().getTradeStatus().equalsIgnoreCase("Pending"))
+                .collect(Collectors.toList());
+
+        TradeState remainingTradeState = remainingTradeStatesPages.get(0).getState().getData();
+
+        // Check trade state
+        assertEquals(remainingTradeState.toString(), tradeState.toString());
+
+        CordaFuture<List<MatchRecord>> matchFuture = partyA.startFlow(new MatchOrdersFlow.MatchOrdersInitiator(tradeState));
+        network.runNetwork();
+        List<MatchRecord> matchStx = matchFuture.get();
+        List<StateAndRef<TradeQueueState>> tradeQueueStatePages = partyA.getServices().getVaultService().queryBy(TradeQueueState.class).getStates();
+        TradeQueueState tradeQueueState = tradeQueueStatePages.get(0).getState().getData();
+        System.out.println("matchSignedTx.matchRecords() =  :" + matchStx.toArray());
+
+        /**
+         Create trade to sell stocks
+         *
+         */
+        CordaFuture<SignedTransaction> futureB = partyB.startFlow(new TradeFlow.Initiator(tradeState2));
+        network.runNetwork();
+        SignedTransaction stxB = futureB.get();
+        SecureHash stxIDB = stx.getId();
+
+        // Check if initiator and observer have recorded the transaction
+        SignedTransaction initiatorTxB = partyB.getServices().getValidatedTransactions().getTransaction(stxIDB);
+        SignedTransaction observerTxB = partyA.getServices().getValidatedTransactions().getTransaction(stxIDB);
+        assertNotNull(initiatorTxB);
+        assertNotNull(observerTxB);
+        assertEquals(initiatorTxB, observerTxB);
+
+        // Retrieve trade state from initiator's vault
+        List<UniqueIdentifier> linearIdB = singletonList(tradeState2.getLinearId());
+        QueryCriteria linearCriteriaAllB = new QueryCriteria.LinearStateQueryCriteria(null, linearIdB, Vault.StateStatus.UNCONSUMED, null);
+        Vault.Page<TradeState> resultsB = partyB.getServices().getVaultService().queryBy(TradeState.class, linearCriteriaAllB, pageSpec);
+        List<StateAndRef<TradeState>> remainingTradeStatesPagesB = resultsB.getStates().stream()
+                .filter(x -> x.getState().getData().getTradeStatus().equalsIgnoreCase("Pending"))
+                .collect(Collectors.toList());
+        TradeState remainingTradeStateB = remainingTradeStatesPagesB.get(0).getState().getData();
+
+        // Check trade state
+        assertEquals(remainingTradeStateB.toString(), tradeState2.toString());
+
+        CordaFuture<List<MatchRecord>> matchFutureB = partyB.startFlow(new MatchOrdersFlow.MatchOrdersInitiator(tradeState2));
+        network.runNetwork();
+        List<MatchRecord> matchBStx = matchFutureB.get();
+        List<StateAndRef<TradeQueueState>> tradeQueueStatePagesB = partyB.getServices().getVaultService().queryBy(TradeQueueState.class).getStates();
+        TradeQueueState tradeQueueStateB = tradeQueueStatePagesB.get(0).getState().getData();
+        System.out.println("test=======" + tradeQueueStateB);
+        System.out.println("matchSignedTx.matchRecords() =  :" + Arrays.asList(matchBStx).toString());
 
     }
 }

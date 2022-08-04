@@ -5,10 +5,18 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import net.corda.core.contracts.ContractState;
 import net.corda.core.contracts.StateAndRef;
+import net.corda.core.contracts.UniqueIdentifier;
 import net.corda.core.crypto.SecureHash;
 import net.corda.core.flows.*;
 import net.corda.core.identity.CordaX500Name;
+import net.corda.core.node.services.vault.*;
+import net.corda.core.node.services.vault.QueryCriteria.LinearStateQueryCriteria;
+
+import static java.util.Collections.singletonList;
+
 import net.corda.core.identity.Party;
+import net.corda.core.node.services.Vault;
+import net.corda.core.node.services.vault.PageSpecification;
 import net.corda.core.transactions.SignedTransaction;
 import net.corda.core.transactions.TransactionBuilder;
 import net.corda.core.utilities.ProgressTracker;
@@ -23,6 +31,8 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static net.corda.core.contracts.ContractsDSL.requireThat;
+import static net.corda.core.node.services.vault.QueryCriteriaUtils.DEFAULT_PAGE_NUM;
+import static net.corda.core.node.services.vault.QueryCriteriaUtils.MAX_PAGE_SIZE;
 
 /**
  * This flow allows two parties (the [Initiator] and the [Responder]) to come to an agreement about the Trade encapsulated
@@ -84,10 +94,12 @@ public class CounterTradeFlow {
             progressTracker.setCurrentStep(GENERATING_TRANSACTION);
 
             // Generate a transaction by taking the current state and check that the incoming counterTradeState matches with the TradeState in the vault
-            List<StateAndRef<TradeState>> inputTradeStateList = getServiceHub().getVaultService().queryBy(TradeState.class).getStates().stream()
-                    .filter(x -> !x.getState().getData().getInitiatingParty().equals(tradeState.getCounterParty()))
+            List<UniqueIdentifier> linearId = singletonList(tradeState.getLinearId());
+            QueryCriteria linearCriteriaAll = new LinearStateQueryCriteria(null, linearId, Vault.StateStatus.UNCONSUMED, null);
+            PageSpecification pageSpec = new PageSpecification(DEFAULT_PAGE_NUM, MAX_PAGE_SIZE);
+            Vault.Page<TradeState> results = getServiceHub().getVaultService().queryBy(TradeState.class, linearCriteriaAll, pageSpec);
+            List<StateAndRef<TradeState>> inputTradeStateList = results.getStates().stream()
                     .filter(x -> x.getState().getData().getTradeStatus().equalsIgnoreCase("Pending"))
-                    .filter(x -> x.getState().getData().getLinearId().equals(tradeState.getLinearId()))
                     .collect(Collectors.toList());
 
             if (inputTradeStateList.isEmpty()) {
@@ -108,14 +120,14 @@ public class CounterTradeFlow {
                         tradeState.getTradeType(), tradeState.stockName, input.getStockPrice(), unConsumedQuantity, input.getExpirationDate(),
                         input.getTradeStatus(), input.tradeDate, input.settlementDate, input.getLinearId());
 
-                 txBuilder = new TransactionBuilder(notary)
+                txBuilder = new TransactionBuilder(notary)
                         .addOutputState(tradeState, TradeContract.ID)
-                        .addOutputState(unConsumedTradeState,TradeContract.ID)
+                        .addOutputState(unConsumedTradeState, TradeContract.ID)
                         .addInputState(inputTradeState)
                         .addCommand(command, requiredSigns);
 
             } else if (input.getStockQuantity() == tradeState.getStockQuantity()) {
-                 txBuilder = new TransactionBuilder(notary)
+                txBuilder = new TransactionBuilder(notary)
                         .addOutputState(tradeState, TradeContract.ID)
                         .addInputState(inputTradeState)
                         .addCommand(command, requiredSigns);
