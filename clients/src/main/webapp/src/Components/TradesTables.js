@@ -102,12 +102,12 @@ const TradeTables = (props) => (
                                 <TableCell key={7} component="th" scope="row">{row.expirationDate}</TableCell>
                                 <TableCell key={8} component="th" scope="row">{row.tradeStatus}</TableCell>
                                 <TableCell key={9} component="th" scope="row">{row.linearId}</TableCell>
-                                {(row.initiatingParty !== props.getPartyfromPort()) &&
-                                <TableCell component="th" scope="row">
-                                    <Button size='small' style={{marginBottom: 5}} type="submit"
-                                            fullWidth variant="contained" color="primary"
-                                            onClick={() => props.counterTradeButton(index)}>Accept </Button>
-                                </TableCell>}
+                                {/*{(row.initiatingParty !== props.getPartyfromPort()) &&*/}
+                                {/*<TableCell component="th" scope="row">*/}
+                                {/*    <Button size='small' style={{marginBottom: 5}} type="submit"*/}
+                                {/*            fullWidth variant="contained" color="primary"*/}
+                                {/*            onClick={() => props.counterTradeButton(index)}>Accept </Button>*/}
+                                {/*</TableCell>}*/}
                                 {(row.initiatingParty === props.getPartyfromPort()) &&
                                 <TableCell component="th" scope="row">
                                     <Button size='small' style={{marginBottom: 5}} type="submit"
@@ -159,12 +159,12 @@ const TradeTables = (props) => (
                                 <TableCell key={7} component="th" scope="row">{row.tradeStatus}</TableCell>
                                 <TableCell key={9} component="th" scope="row">{row.linearId}</TableCell>
 
-                                {(row.initiatingParty !== props.getPartyfromPort()) &&
-                                <TableCell component="th" scope="row">
-                                    <Button size='small' style={{marginBottom: 5}} type="submit"
-                                            fullWidth variant="contained" color="primary"
-                                            onClick={() => props.counterTradeButton(index)}>Accept</Button>
-                                </TableCell>}
+                                {/*{(row.initiatingParty !== props.getPartyfromPort()) &&*/}
+                                {/*<TableCell component="th" scope="row">*/}
+                                {/*    <Button size='small' style={{marginBottom: 5}} type="submit"*/}
+                                {/*            fullWidth variant="contained" color="primary"*/}
+                                {/*            onClick={() => props.counterTradeButton(index)}>Accept</Button>*/}
+                                {/*</TableCell>}*/}
                                 {(row.initiatingParty === props.getPartyfromPort()) &&
                                 <TableCell component="th" scope="row">
                                     <Button size='small' style={{marginBottom: 5}} type="submit"
