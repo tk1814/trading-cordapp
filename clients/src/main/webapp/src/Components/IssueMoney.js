@@ -16,7 +16,7 @@ const IssueMoney = (props) => (
                         <InputAdornment position="start">$</InputAdornment>)
                 }}
                 onChange={props.moneyAmountToIssueChange}
-                error={props.moneyAmountToIssue === ""}
+                error={props.moneyAmountToIssue === "" || props.moneyAmountToIssue <= 0}
                 helperText={props.moneyAmountToIssue === "" ? 'Empty field!' : ' '}/>
         </Grid>
         <Grid item xs={10}>

@@ -25,7 +25,7 @@ const IssueStocks = (props) => (
                     size="small" required name="stockAmountToIssue" variant="outlined"
                     fullWidth id="stockAmountToIssue" label="Volume" type="number"
                     onChange={props.stockAmountToIssueChange}
-                    error={props.stockAmountToIssue === ""}
+                    error={props.stockAmountToIssue === "" || props.stockAmountToIssue <= 0}
                     helperText={props.stockAmountToIssue === "" ? 'Empty field!' : ' '}
                 />
             </Grid>
