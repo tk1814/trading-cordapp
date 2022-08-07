@@ -185,7 +185,7 @@ e.g.
 Run the nodes in VM in root/opt/corda (sudo -i):
 ```
 $cd /opt/corda/PartyA/
-$java -jar corda.jar --config-file=node.conf --base-directory=/opt/corda/PartyA/ --allow-hibernate-to-manage-app-schema &
+$java -jar corda.jar --config-file=node.conf --base-directory=/opt/corda/PartyA/ --allow-hibernate-to-manage-app-schema 
 $cd /opt/corda/NotaryService0/
 $java -jar corda.jar run-migration-scripts --app-schemas
 $java -jar corda.jar --config-file=node.conf --base-directory=/opt/corda/NotaryService0  --allow-hibernate-to-manage-app-schema

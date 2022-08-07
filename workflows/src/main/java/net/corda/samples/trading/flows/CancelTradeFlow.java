@@ -5,9 +5,12 @@ import com.google.common.collect.ImmutableList;
 import net.corda.core.contracts.StateAndRef;
 import net.corda.core.contracts.UniqueIdentifier;
 import net.corda.core.flows.*;
-import net.corda.core.identity.CordaX500Name;
 import net.corda.core.identity.Party;
 import net.corda.core.node.StatesToRecord;
+import net.corda.core.node.services.Vault;
+import net.corda.core.node.services.vault.PageSpecification;
+import net.corda.core.node.services.vault.QueryCriteria;
+import net.corda.core.node.services.vault.QueryCriteria.LinearStateQueryCriteria;
 import net.corda.core.transactions.SignedTransaction;
 import net.corda.core.transactions.TransactionBuilder;
 import net.corda.samples.trading.contracts.TradeContract;
@@ -17,6 +20,10 @@ import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import static java.util.Collections.singletonList;
+import static net.corda.core.node.services.vault.QueryCriteriaUtils.DEFAULT_PAGE_NUM;
+import static net.corda.core.node.services.vault.QueryCriteriaUtils.MAX_PAGE_SIZE;
 
 public class CancelTradeFlow {
     @SchedulableFlow
@@ -37,12 +44,15 @@ public class CancelTradeFlow {
         public SignedTransaction call() throws FlowException {
             // Obtain a reference to the notary we want to use.
             final Party notary = getServiceHub().getNetworkMapCache().getNotaryIdentities().get(0);
+            PageSpecification pageSpec = new PageSpecification(DEFAULT_PAGE_NUM, MAX_PAGE_SIZE);
+            List<UniqueIdentifier> linearIdList = singletonList(linearId);
+            QueryCriteria linearCriteriaAll = new LinearStateQueryCriteria(null, linearIdList, Vault.StateStatus.UNCONSUMED, null);
 
             // Generate a transaction by taking the current state
-            List<StateAndRef<TradeState>> inputTradeStateList = getServiceHub().getVaultService().queryBy(TradeState.class).getStates().stream()
+            Vault.Page<TradeState> results = getServiceHub().getVaultService().queryBy(TradeState.class, linearCriteriaAll, pageSpec);
+            List<StateAndRef<TradeState>> inputTradeStateList = results.getStates().stream()
                     .filter(x -> x.getState().getData().getInitiatingParty().equals(getOurIdentity()))
                     .filter(x -> x.getState().getData().getTradeStatus().equalsIgnoreCase("Pending"))
-                    .filter(x -> x.getState().getData().getLinearId().equals(linearId))
                     .collect(Collectors.toList());
 
             if (inputTradeStateList.isEmpty()) {

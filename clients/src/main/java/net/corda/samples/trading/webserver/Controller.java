@@ -10,7 +10,11 @@ import net.corda.core.contracts.UniqueIdentifier;
 import net.corda.core.identity.CordaX500Name;
 import net.corda.core.identity.Party;
 import net.corda.core.messaging.CordaRPCOps;
+import net.corda.core.messaging.DataFeed;
 import net.corda.core.node.NodeInfo;
+import net.corda.core.node.services.Vault;
+import net.corda.core.node.services.vault.PageSpecification;
+import net.corda.core.node.services.vault.QueryCriteria;
 import net.corda.core.transactions.SignedTransaction;
 import net.corda.samples.trading.entity.MatchRecord;
 import net.corda.samples.trading.flows.*;
@@ -25,6 +29,9 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
+
+import static net.corda.core.node.services.vault.QueryCriteriaUtils.DEFAULT_PAGE_NUM;
+import static net.corda.core.node.services.vault.QueryCriteriaUtils.MAX_PAGE_SIZE;
 
 /**
  * Define your API endpoints here.
@@ -71,8 +78,13 @@ public class Controller {
      */
     @RequestMapping(value = "/trades", method = RequestMethod.GET)
     public List<String> getTrades() {
-        List<StateAndRef<TradeState>> stateAndRefs = proxy.vaultQuery(TradeState.class).getStates();
+        PageSpecification pageSpec = new PageSpecification(DEFAULT_PAGE_NUM, MAX_PAGE_SIZE);
+        QueryCriteria linearCriteriaAll = new QueryCriteria.LinearStateQueryCriteria(null, null, Vault.StateStatus.UNCONSUMED, null);
+        List<StateAndRef<TradeState>> stateAndRefs = proxy.vaultQueryByWithPagingSpec(TradeState.class, linearCriteriaAll, pageSpec).getStates();
         return stateAndRefs.stream().map(x -> x.getState().getData().toString()).collect(Collectors.toList());
+
+//        List<StateAndRef<TradeState>> stateAndRefs = proxy.vaultQuery(TradeState.class).getStates();
+//        return stateAndRefs.stream().map(x -> x.getState().getData().toString()).collect(Collectors.toList());
     }
 
     /**
