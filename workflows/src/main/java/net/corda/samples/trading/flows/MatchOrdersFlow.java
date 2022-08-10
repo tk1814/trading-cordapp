@@ -11,6 +11,7 @@ import net.corda.samples.trading.contracts.TradeQueueContract;
 import net.corda.samples.trading.entity.MatchRecord;
 import net.corda.samples.trading.entity.BuyOrderKey;
 import net.corda.samples.trading.entity.SellOrderKey;
+import net.corda.samples.trading.entity.TradeStateWithFee;
 import net.corda.samples.trading.states.TradeQueueState;
 import net.corda.samples.trading.states.TradeState;
 import org.apache.http.client.utils.CloneUtils;
@@ -99,23 +100,27 @@ public class MatchOrdersFlow {
             List<MatchRecord> matchResults = new ArrayList<>();
             BigDecimal matchPrice;
             String tradeType = tradeState.getTradeType();
-            TreeMap<BuyOrderKey, TradeState> counterPartyBuyQueue = tradeQueueState.getBuyStockList();
-            TreeMap<SellOrderKey, TradeState> counterPartySellQueue = tradeQueueState.getSellStockList();
+            TradeStateWithFee tradeStateWithFee = new TradeStateWithFee(tradeState, new BigDecimal("0"));
+            TreeMap<BuyOrderKey, TradeStateWithFee> counterPartyBuyQueue = tradeQueueState.getBuyStockList();
+            TreeMap<SellOrderKey, TradeStateWithFee> counterPartySellQueue = tradeQueueState.getSellStockList();
 
             for (; ; ) {
 
-                TradeState counterPartyTradeState = null;
+                TradeStateWithFee counterPartyTradeStateWithFee = null;
                 if (tradeType.equals("Buy")) {
+                    tradeStateWithFee.setFee(new BigDecimal("1"));
                     if (counterPartySellQueue == null || counterPartySellQueue.size() == 0) {
                         break;
                     }
-                    counterPartyTradeState = tradeQueueState.getSellFirst();
+                    counterPartyTradeStateWithFee = tradeQueueState.getSellFirst();
                 } else {
                     if (counterPartyBuyQueue == null || counterPartyBuyQueue.size() == 0) {
                         break;
                     }
-                    counterPartyTradeState = tradeQueueState.getBuyFirst();
+                    counterPartyTradeStateWithFee = tradeQueueState.getBuyFirst();
                 }
+
+                TradeState counterPartyTradeState = counterPartyTradeStateWithFee.getTradeState();
 
                 BigDecimal tradePrice = new BigDecimal(Double.toString(tradeState.getStockPrice()));
                 BigDecimal counterPartyTradePrice = new BigDecimal(Double.toString(counterPartyTradeState.getStockPrice()));
@@ -133,7 +138,7 @@ public class MatchOrdersFlow {
                 TradeState newCounterPartyTradeState = CopyUtils.copy(counterPartyTradeState);
 
                 //matchQuantity
-                BigDecimal matchQuantity = new BigDecimal(tradeState.getStockQuantity()).min(new BigDecimal(newCounterPartyTradeState.getStockQuantity()));
+                BigDecimal matchQuantity = new BigDecimal(tradeState.getStockQuantity()).min(new BigDecimal(counterPartyTradeState.getStockQuantity()));
                 //matchResults
                 matchResults.add(new MatchRecord(matchPrice, matchQuantity, tradeState, newCounterPartyTradeState));
                 // Update the number of orders that have been filled
@@ -141,14 +146,17 @@ public class MatchOrdersFlow {
                 newCounterPartyTradeState.stockQuantity = (new BigDecimal(newCounterPartyTradeState.getStockQuantity()).subtract(matchQuantity)).intValue();
                 // Delete from the order book when the counterparty order is fully filled
                 if (tradeType.equals("Buy")) {
-                    tradeQueueState.removeSellTrade(counterPartyTradeState);
+                    //if the initial txn is buying, set a fixed fee
+                    tradeQueueState.removeSellTrade(counterPartyTradeStateWithFee);
                     if (newCounterPartyTradeState.stockQuantity != 0) {
-                        tradeQueueState.addSellTrade(newCounterPartyTradeState);
+                        TradeStateWithFee newCounterPartyTradeStateWithFee = new TradeStateWithFee(newCounterPartyTradeState, counterPartyTradeStateWithFee.getFee());
+                        tradeQueueState.addSellTrade(newCounterPartyTradeStateWithFee);
                     }
                 } else {
-                    tradeQueueState.removeBuyTrade(counterPartyTradeState);
+                    tradeQueueState.removeBuyTrade(counterPartyTradeStateWithFee);
                     if (newCounterPartyTradeState.stockQuantity != 0) {
-                        tradeQueueState.addBuyTrade(newCounterPartyTradeState);
+                        TradeStateWithFee newCounterPartyTradeStateWithFee = new TradeStateWithFee(newCounterPartyTradeState, counterPartyTradeStateWithFee.getFee());
+                        tradeQueueState.addBuyTrade(newCounterPartyTradeStateWithFee);
                     }
                 }
 
@@ -160,9 +168,10 @@ public class MatchOrdersFlow {
             // tradeState are placed in the order book when they are not fully filled
             if (tradeState.stockQuantity > 0) {
                 if (tradeType.equals("Buy")) {
-                    tradeQueueState.addBuyTrade(tradeState);
+                      tradeStateWithFee.setFee(new BigDecimal(1+Math.random()).setScale(2,BigDecimal.ROUND_HALF_UP));
+                    tradeQueueState.addBuyTrade(tradeStateWithFee);
                 } else {
-                    tradeQueueState.addSellTrade(tradeState);
+                    tradeQueueState.addSellTrade(tradeStateWithFee);
                 }
             }
             return matchResults;

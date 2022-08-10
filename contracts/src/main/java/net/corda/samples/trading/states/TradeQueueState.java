@@ -8,8 +8,10 @@ import net.corda.core.identity.Party;
 import net.corda.samples.trading.contracts.TradeQueueContract;
 import net.corda.samples.trading.entity.BuyOrderKey;
 import net.corda.samples.trading.entity.SellOrderKey;
+import net.corda.samples.trading.entity.TradeStateWithFee;
 import org.jetbrains.annotations.NotNull;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeMap;
@@ -17,13 +19,13 @@ import java.util.TreeMap;
 @BelongsToContract(TradeQueueContract.class)
 public class TradeQueueState implements ContractState {
 
-    public TreeMap<SellOrderKey, TradeState> sellStockList;
-    public TreeMap<BuyOrderKey, TradeState> buyStockList;
+    public TreeMap<SellOrderKey, TradeStateWithFee> sellStockList;
+    public TreeMap<BuyOrderKey, TradeStateWithFee> buyStockList;
     public String stockName;
     private UniqueIdentifier linearId;
     public Party createParty;
     private List<Party> participantParties;
-    public TradeQueueState(TreeMap<SellOrderKey, TradeState> sellStockList, TreeMap<BuyOrderKey, TradeState> buyStockList, String stockName,
+    public TradeQueueState(TreeMap<SellOrderKey, TradeStateWithFee> sellStockList, TreeMap<BuyOrderKey, TradeStateWithFee> buyStockList, String stockName,
                            UniqueIdentifier linearId, Party createParty, List<Party> participantParties) {
         this.sellStockList = sellStockList;
         this.buyStockList = buyStockList;
@@ -33,11 +35,11 @@ public class TradeQueueState implements ContractState {
         this.participantParties = participantParties;
     }
 
-    public TreeMap<SellOrderKey, TradeState> getSellStockList() {
+    public TreeMap<SellOrderKey, TradeStateWithFee> getSellStockList() {
         return sellStockList;
     }
 
-    public TreeMap<BuyOrderKey, TradeState> getBuyStockList() {
+    public TreeMap<BuyOrderKey, TradeStateWithFee> getBuyStockList() {
         return buyStockList;
     }
 
@@ -57,11 +59,11 @@ public class TradeQueueState implements ContractState {
         return participantParties;
     }
 
-    public void setSellStockList(TreeMap<SellOrderKey, TradeState> sellStockList) {
+    public void setSellStockList(TreeMap<SellOrderKey, TradeStateWithFee> sellStockList) {
         this.sellStockList = sellStockList;
     }
 
-    public void setBuyStockList(TreeMap<BuyOrderKey, TradeState> buyStockList) {
+    public void setBuyStockList(TreeMap<BuyOrderKey, TradeStateWithFee> buyStockList) {
         this.buyStockList = buyStockList;
     }
 
@@ -81,28 +83,28 @@ public class TradeQueueState implements ContractState {
         this.participantParties = participantParties;
     }
 
-    public TradeState getBuyFirst() {
+    public TradeStateWithFee getBuyFirst() {
         return this.buyStockList.isEmpty() ? null : this.getBuyStockList().firstEntry().getValue();
     }
 
-    public boolean removeBuyTrade(TradeState tradeState) {
-        return this.buyStockList.remove(new BuyOrderKey(tradeState.getTradeDate(), tradeState.getStockPrice())) != null;
+    public boolean removeBuyTrade(TradeStateWithFee tradeStateWithFee) {
+        return this.buyStockList.remove(new BuyOrderKey(tradeStateWithFee.getTradeState().getTradeDate(), tradeStateWithFee.getTradeState().getStockPrice(),tradeStateWithFee.getFee())) != null;
     }
 
-    public boolean addBuyTrade(TradeState tradeState) {
-        return this.buyStockList.put(new BuyOrderKey(tradeState.getTradeDate(), tradeState.getStockPrice()), tradeState) == null;
+    public boolean addBuyTrade(TradeStateWithFee tradeStateWithFee) {
+        return this.buyStockList.put(new BuyOrderKey(tradeStateWithFee.getTradeState().getTradeDate(), tradeStateWithFee.getTradeState().getStockPrice(),tradeStateWithFee.getFee()), tradeStateWithFee) == null;
     }
 
-    public TradeState getSellFirst() {
+    public TradeStateWithFee getSellFirst() {
         return this.sellStockList.isEmpty() ? null : this.getSellStockList().firstEntry().getValue();
     }
 
-    public boolean removeSellTrade(TradeState tradeState) {
-        return this.sellStockList.remove(new SellOrderKey(tradeState.getTradeDate(), tradeState.getStockPrice())) != null;
+    public boolean removeSellTrade(TradeStateWithFee tradeStateWithFee) {
+        return this.sellStockList.remove(new SellOrderKey(tradeStateWithFee.getTradeState().getTradeDate(), tradeStateWithFee.getTradeState().getStockPrice())) != null;
     }
 
-    public boolean addSellTrade(TradeState tradeState) {
-        return this.sellStockList.put(new SellOrderKey(tradeState.getTradeDate(), tradeState.getStockPrice()), tradeState) == null;
+    public boolean addSellTrade(TradeStateWithFee tradeStateWithFee) {
+        return this.sellStockList.put(new SellOrderKey(tradeStateWithFee.getTradeState().getTradeDate(), tradeStateWithFee.getTradeState().getStockPrice()), tradeStateWithFee) == null;
     }
 
     @NotNull
