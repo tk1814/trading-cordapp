@@ -10,6 +10,7 @@ import net.corda.core.transactions.TransactionBuilder;
 import net.corda.samples.trading.contracts.TradeQueueContract;
 import net.corda.samples.trading.entity.BuyOrderKey;
 import net.corda.samples.trading.entity.SellOrderKey;
+import net.corda.samples.trading.entity.TradeStateWithFee;
 import net.corda.samples.trading.states.TradeQueueState;
 import net.corda.samples.trading.states.TradeState;
 
@@ -43,7 +44,7 @@ public class CreateTradeQueueFlow {
             participants.remove(notary);
 
             //create state
-            TradeQueueState tradeQueueState = new TradeQueueState(new TreeMap<SellOrderKey, TradeState>(), new TreeMap<BuyOrderKey, TradeState>(),
+            TradeQueueState tradeQueueState = new TradeQueueState(new TreeMap<SellOrderKey, TradeStateWithFee>(), new TreeMap<BuyOrderKey, TradeStateWithFee>(),
                     stockName, new UniqueIdentifier(null, UUID.randomUUID()), creatorParty, participants);
 
             //create txn
