@@ -212,18 +212,31 @@ To restart a node:
 2. delete these folders: ```rm -r artemis/ logs/ per*```
 3. start the node again, and add the run-migration-script sub-command: ``` run-migration-scripts --app-schemas --core-schemas```
 
-Network bootstrapper (not tested):  
+Network bootstrapper:  
 ```
+0. In the project folder run ./gradlew clean deployNodes
 1. Download the 4.8.5 network bootstrapper .jar from https://software.r3.com/ui/native/corda-releases/net/corda/corda-tools-network-bootstrapper.
-2. In a new directory called nodes2/ put every node's .conf file like this:
+2. In a new directory called nodes/ put every node's .conf (from build/nodes/):
+NotaryService0_node.conf
+NotaryService1_node.conf
+NotaryService2_node.conf
+NotaryService3_node.conf
 PartyA_node.conf 
 PartyB_node.conf
-Notary0_node.conf
-Notary1_node.conf
-Notary2_node.conf
-Notary3_node.conf
-3. Change the ports to the vm ip
-4. Outside of nodes2/ run:
-java -jar corda-tools-network-bootstrapper-4.8.5.jar --dir nodes2/
-5. add the cordapps/ directory to every node folder
+3. Change the ports to the VM IP (if necessary)
+4. Outside of nodes/ run:
+java -jar corda-tools-network-bootstrapper-4.8.5.jar --dir nodes/
+5. Delete .cache/ djvm/ logs/ from every node folder
+6. Add config/ to every Notary
+7. Add cordapps/ (from build/nodes/) to every node folder
+```
+
+Connect web servers running locally with nodes running on the VM:
+```
+In build.gradle (clients) change:
+'--config.rpc.host=localhost'
+to 
+'--config.rpc.host=40.120.37.142'
+Comment out jmeter dependencies in build.gradle (workflows) and all the samplers in jmeter
+Run the webservers and UI locally.
 ```
