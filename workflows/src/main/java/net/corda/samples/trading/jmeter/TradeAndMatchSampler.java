@@ -21,20 +21,23 @@ public class TradeAndMatchSampler extends AbstractSampler {
     public static final String STOCK_SYMBOL = "SP500";
     static private Argument stockPrice = new Argument("stockPrice", "", "<meta>", "Stock price from csv file.");
     static private Argument sellOperation = new Argument("sellOperation", "", "<meta>", "Sell or Buy operation.");
+    static private Argument expirationTimeInMinutes = new Argument("expirationTimeInMinutes", "", "<meta>", "Minutes to add to the expiration time.");
 
     public double csvStockPrice;
     public Boolean sellOperationBoolean;
+    public long expirationMinutes;
 
     @Override
     public void setupTest(@NotNull CordaRPCOps rpcProxy, @NotNull JavaSamplerContext testContext) {
         csvStockPrice = Double.parseDouble(testContext.getParameter(stockPrice.getName(), stockPrice.getValue()));
         sellOperationBoolean = Boolean.valueOf(testContext.getParameter(sellOperation.getName(), sellOperation.getValue()));
+        expirationMinutes = Long.parseLong(testContext.getParameter(expirationTimeInMinutes.getName(), expirationTimeInMinutes.getValue()));
     }
 
     @NotNull
     @Override
     public Set<Argument> getAdditionalArgs() {
-        return Stream.of(stockPrice, sellOperation).collect(Collectors.toCollection(HashSet::new));
+        return Stream.of(stockPrice, sellOperation, expirationTimeInMinutes).collect(Collectors.toCollection(HashSet::new));
     }
 
     @NotNull
@@ -46,12 +49,12 @@ public class TradeAndMatchSampler extends AbstractSampler {
         if (sellOperationBoolean) {
             tradeState = new TradeState(rpcProxy.wellKnownPartyFromX500Name(myLegalName), null,
                     "Pending Order", "Sell", STOCK_SYMBOL, csvStockPrice, 1,
-                    LocalDateTime.now(ZoneOffset.UTC).plusDays(1L), "Pending", LocalDateTime.now(ZoneOffset.UTC),
+                    LocalDateTime.now(ZoneOffset.UTC).plusMinutes(expirationMinutes), "Pending", LocalDateTime.now(ZoneOffset.UTC),
                     null, new UniqueIdentifier());
         } else {
             tradeState = new TradeState(rpcProxy.wellKnownPartyFromX500Name(myLegalName), null,
                     "Pending Order", "Buy", STOCK_SYMBOL, csvStockPrice, 1,
-                    LocalDateTime.now(ZoneOffset.UTC).plusDays(1L), "Pending", LocalDateTime.now(ZoneOffset.UTC),
+                    LocalDateTime.now(ZoneOffset.UTC).plusMinutes(expirationMinutes), "Pending", LocalDateTime.now(ZoneOffset.UTC),
                     null, new UniqueIdentifier());
         }
         return new FlowInvoke<>(TradeAndMatchFlow.class, new Object[]{tradeState});
