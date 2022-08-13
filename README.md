@@ -3,7 +3,7 @@ Open the project in Intellij:
 - File -> Open -> trading-cordapp -> build.gradle -> OK -> Open as a Project
 
 To debug PartyA node:
-build nodes and run the party servers -> Run | Edit Configurations -> + -> Remote JVM debug -> Port 5006 -> OK -> enter breakpoints in Flow/Contract/etc.java -> run the debugger
+build nodes and run the party webservers -> Run | Edit Configurations -> + -> Remote JVM debug -> Port 5006 -> OK -> enter breakpoints in Flow/Contract/etc.java -> run the debugger
 
 Run in terminal 1:
 ```
@@ -114,8 +114,8 @@ $echo $JAVA_HOME (should be set as above)
 
 How to deploy nodes on VM:
 ```
-<username> : TestAdmin-1 or ubuntu
-<ip> : 20.108.166.202 (Azure) or 43.131.24.141 (Tencent)
+<username> : TestAdmin-1
+<ip> : 22.111.111.222 (Azure) 
 ```
 
 Run nodes:
@@ -210,11 +210,11 @@ To restart a node:
 
 1. kill the node
 2. delete these folders: ```rm -r artemis/ logs/ per*```
-3. start the node again, and add the run-migration-script sub-command: ``` run-migration-scripts --app-schemas --core-schemas```
+3. start the node again, and add the run-migration-script sub-command: ```java -jar corda.jar run-migration-scripts --core-schemas --app-schemas```
 
-Network bootstrapper:  
+Network bootstrapper (preferred way to deploy nodes):  
 ```
-0. In the project folder run ./gradlew clean deployNodes
+0. In the project folder run ./gradlew clean deployNodes, to produce cordapps/ (find in build/nodes/PartyA/)
 1. Download the 4.8.5 network bootstrapper .jar from https://software.r3.com/ui/native/corda-releases/net/corda/corda-tools-network-bootstrapper.
 2. In a new directory called nodes/ put every node's .conf (from build/nodes/):
 NotaryService0_node.conf
@@ -223,12 +223,37 @@ NotaryService2_node.conf
 NotaryService3_node.conf
 PartyA_node.conf 
 PartyB_node.conf
+
+NotaryService_node.conf should look like this: 
+---------
+devMode=true
+myLegalName="O=Notary Service 0,L=Zurich,C=CH"
+notary {
+    bftSMaRt {
+       clusterAddresses=[
+                "127.0.0.1:11000",
+                "127.0.0.1:11010",
+                "127.0.0.1:11020",
+                "127.0.0.1:11030"
+       ]
+            replicaId=0
+    }
+    serviceLegalName="O=BFT,L=Zurich,C=CH"
+    validating=false
+}
+p2pAddress="<ip>:10009"
+rpcSettings {
+    address="0.0.0.0:10010"
+    adminAddress="0.0.0.0:10110"
+}
+---------
 3. Change the ports to the VM IP (if necessary)
 4. Outside of nodes/ run:
 java -jar corda-tools-network-bootstrapper-4.8.5.jar --dir nodes/
 5. Delete .cache/ djvm/ logs/ from every node folder
 6. Add config/ to every Notary
 7. Add cordapps/ (from build/nodes/) to every node folder
+8. scp nodes/ to the VM
 ```
 
 Connect web servers running locally with nodes running on the VM:
@@ -237,6 +262,6 @@ In build.gradle (clients) change:
 '--config.rpc.host=localhost'
 to 
 '--config.rpc.host=40.120.37.142'
-Comment out jmeter dependencies in build.gradle (workflows) and all the samplers in jmeter
+Comment out jmeter dependencies in build.gradle (workflows) and all the samplers in jmeter/
 Run the webservers and UI locally.
 ```
