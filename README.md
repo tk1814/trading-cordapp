@@ -53,15 +53,11 @@ How to change a jar file in corda.jar (corda.jar is the platform for all cordapp
 ```
 # Decompress corda.jar
 
-jar -xvf corda/corda.jar
+jar -xvf corda.jar
+
 
 # change BFT-SMaRt.jar to the one we want to use
 
-cd corda
-
-rm BFT-SMaRt.jar
-
-rm corda.jar
 
 # Compress the new jar
 
