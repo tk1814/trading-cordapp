@@ -48,6 +48,31 @@ PartyA connects with webserver on port 10056.
 PartyB connects with webserver on port 10057.
 
 
+How to change a jar file in corda.jar (corda.jar is the platform for all cordapps). When running corda-network-bootstrapper, it will download corda.jar automatically. So after the nodes are generated, change the corda.jar to the jar we want to use. 
+
+```
+# Decompress corda.jar
+
+jar -xvf corda/corda.jar
+
+# change BFT-SMaRt.jar to the one we want to use
+
+cd corda
+
+rm BFT-SMaRt.jar
+
+rm corda.jar
+
+# Compress the new jar
+
+jar -cvf0m ../corda.jar ./META-INF/MANIFEST.MF .
+
+
+```
+
+
+
+
 How to run Jmeter:
 
 
