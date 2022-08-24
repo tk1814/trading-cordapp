@@ -151,12 +151,12 @@ Copy build/nodes into another folder outside of the project folder.
 Delete .cache, runnodes, .conf
 Delete logs/ djvm/ drivers/ from every node's folder.
 
-In nodes/ add config folder including hosts.config and system.config
-In hosts.config change localhost to <ip>:
-0 <ip> 11000 11001
-1 <ip> 11010 11011
-2 <ip> 11020 11021
-3 <ip> 11030 11031
+//In nodes/ add config folder including hosts.config and system.config
+//In hosts.config change localhost to <ip>:
+//0 <ip> 11000 11001
+//1 <ip> 11010 11011
+//2 <ip> 11020 11021
+//3 <ip> 11030 11031
 
 In every node and Notary folder change node.conf "localhost" to VM <ip> port:
 p2pAddress="<ip>:10006"
