@@ -183,7 +183,7 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
 
     node {
         name "O=Notary Service 0,L=Zurich,C=CH"
-        p2pAddress "20.90.87.120:10009"
+        p2pAddress "127.0.0.1:10009"
         //p2pPort 10009
         rpcSettings {
             address "0.0.0.0:10010"
@@ -192,20 +192,16 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
         notary = [
                 validating: false,
                 serviceLegalName: "O=BFT,L=Zurich,C=CH",
-                className:"net.corda.samples.trading.notaries.BFTNotary",
-                extraConfig:
-                        [bft: [
-                                replicaId: 0,
-                                clusterAddresses: clusterAddresses,
-                                debug: true,
-                                exposeRaces: false
-                        ]]
+                bftSMaRt: [
+                        replicaId: 0,
+                        clusterAddresses: clusterAddresses
+                ]
         ]
     }
     node {
         name "O=Notary Service 1,L=Zurich,C=CH"
 
-        p2pAddress "20.90.87.120:10013"
+        p2pAddress "127.0.0.1:10013"
         //p2pPort 10013
         rpcSettings {
             address "0.0.0.0:10014"
@@ -214,19 +210,15 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
         notary = [
                 validating: false,
                 serviceLegalName: "O=BFT,L=Zurich,C=CH",
-                className:"net.corda.samples.trading.notaries.BFTNotary",
-                extraConfig:
-                        [bft: [
-                                replicaId: 1,
-                                clusterAddresses: clusterAddresses,
-                                debug: true,
-                                exposeRaces: false
-                        ]]
+                bftSMaRt: [
+                        replicaId: 1,
+                        clusterAddresses: clusterAddresses
+                ]
         ]
     }
     node {
         name "O=Notary Service 2,L=Zurich,C=CH"
-        p2pAddress "20.90.87.120:10017"
+        p2pAddress "127.0.0.1:10017"
         //p2pPort 10017
         rpcSettings {
             address "0.0.0.0:10018"
@@ -235,19 +227,15 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
         notary = [
                 validating: false,
                 serviceLegalName: "O=BFT,L=Zurich,C=CH",
-                className:"net.corda.samples.trading.notaries.BFTNotary",
-                extraConfig:
-                        [bft: [
-                                replicaId: 2,
-                                clusterAddresses: clusterAddresses,
-                                debug: true,
-                                exposeRaces: false
-                        ]]
+                bftSMaRt: [
+                        replicaId: 2,
+                        clusterAddresses: clusterAddresses
+                ]
         ]
     }
     node {
         name "O=Notary Service 3,L=Zurich,C=CH"
-        p2pAddress "20.90.87.120:10021"
+        p2pAddress "127.0.0.1:10021"
         //p2pPort 10021
         rpcSettings {
             address "0.0.0.0:10022"
@@ -256,21 +244,17 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
         notary = [
                 validating: false,
                 serviceLegalName: "O=BFT,L=Zurich,C=CH",
-                className:"net.corda.samples.trading.notaries.BFTNotary",
-                extraConfig:
-                        [bft: [
-                                replicaId: 3,
-                                clusterAddresses: clusterAddresses,
-                                debug: true,
-                                exposeRaces: false
-                        ]]
+                bftSMaRt: [
+                        replicaId: 3,
+                        clusterAddresses: clusterAddresses
+                ]
         ]
     }
 
 
     node {
         name "O=PartyA,L=London,C=GB"
-        p2pAddress "20.90.87.120:10006"
+        p2pAddress "127.0.0.1:10006"
         //p2pPort 10006
         rpcSettings {
             address("0.0.0.0:10016")
@@ -283,7 +267,7 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
 
     node {
         name "O=PartyB,L=New York,C=US"
-        p2pAddress "20.90.87.120:10007"
+        p2pAddress "127.0.0.1:10007"
         //p2pPort 10007
         rpcSettings {
             address("0.0.0.0:10025")
