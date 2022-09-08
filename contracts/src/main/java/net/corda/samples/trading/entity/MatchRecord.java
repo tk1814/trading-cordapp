@@ -12,12 +12,14 @@ public class MatchRecord {
     public final BigDecimal quantity;
     public final TradeState currentOrder;
     public final TradeState makerOrder;
+    public final BigDecimal fee;
 
-    public MatchRecord(BigDecimal price, BigDecimal quantity, TradeState currentOrder, TradeState makerOrder) {
+    public MatchRecord(BigDecimal price, BigDecimal quantity, TradeState currentOrder, TradeState makerOrder, BigDecimal fee) {
         this.price = price;
         this.quantity = quantity;
         this.currentOrder = currentOrder;
         this.makerOrder = makerOrder;
+        this.fee = fee;
     }
 
     @Override
@@ -27,6 +29,7 @@ public class MatchRecord {
                 ", quantity=" + quantity +
                 ", currentOrder=" + currentOrder +
                 ", makerOrder=" + makerOrder +
+                ", fee=" + fee +
                 '}';
     }
 }

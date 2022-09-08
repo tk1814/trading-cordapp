@@ -217,7 +217,7 @@ public class TradeFlowTests {
         assertEquals(remainingTradeState.toString(), counterTradeState.toString());
     }
 
-    @Test
+ /*   @Test
     public void DvPTest() throws ExecutionException, InterruptedException {
 
         // Issue Stock to seller
@@ -260,7 +260,7 @@ public class TradeFlowTests {
         // Check seller's money balance
         Amount<TokenType> receivedMoneyAmount = QueryUtilities.tokenBalance(partyA.getServices().getVaultService(), fiatTokenType);
         assertEquals(receivedMoneyAmount.getQuantity() / 100.0, TRADING_STOCK_QUANTITY * STOCK_PRICE, 0.01);
-    }
+    }*/
 
     @Test
     public void cancelTradeFlowTest() throws ExecutionException, InterruptedException {

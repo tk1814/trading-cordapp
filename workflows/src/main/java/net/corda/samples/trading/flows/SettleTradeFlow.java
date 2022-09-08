@@ -56,7 +56,7 @@ public class SettleTradeFlow extends FlowLogic<SignedTransaction> {
         if (initialTradeState.getTradeType().equals("Sell")) { // called by seller:initiatingParty
             buyer = initialTradeState.getCounterParty();
             seller = initialTradeState.getInitiatingParty();
-            subFlow(new DvPInitiatorFlow(initialTradeState.getStockName(), initialTradeState.getStockQuantity(), buyer, cost));
+            subFlow(new DvPInitiatorFlow.SellStock(initialTradeState, counterPartyTradeState,cost));
         } else if (initialTradeState.getTradeType().equals("Buy")) {
             buyer = initialTradeState.getInitiatingParty();
             seller = initialTradeState.getCounterParty();

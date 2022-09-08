@@ -89,7 +89,9 @@ public class MatchOrdersFlow {
             for (MatchRecord matchRecord : matchResults) {
                 subFlow(new SettleTradeFlow(matchRecord));
             }
-
+            if (matchResults != null && matchResults.size() > 0) {
+                System.out.println(matchResults);
+            }
             return matchResults;
         }
 
@@ -103,21 +105,26 @@ public class MatchOrdersFlow {
             TradeStateWithFee tradeStateWithFee = new TradeStateWithFee(tradeState, new BigDecimal("0"));
             TreeMap<BuyOrderKey, TradeStateWithFee> counterPartyBuyQueue = tradeQueueState.getBuyStockList();
             TreeMap<SellOrderKey, TradeStateWithFee> counterPartySellQueue = tradeQueueState.getSellStockList();
+            BigDecimal fee = new BigDecimal(0);
+            //buyer fee
+            BigDecimal initialBuyFee = new BigDecimal(0);
 
             for (; ; ) {
 
                 TradeStateWithFee counterPartyTradeStateWithFee = null;
                 if (tradeType.equals("Buy")) {
-                    tradeStateWithFee.setFee(new BigDecimal("1"));
+                    initialBuyFee = new BigDecimal(tradeQueueState.getBuyStockList().size() == 0 ? 1 : tradeQueueState.getBuyStockList().size());
                     if (counterPartySellQueue == null || counterPartySellQueue.size() == 0) {
                         break;
                     }
                     counterPartyTradeStateWithFee = tradeQueueState.getSellFirst();
+
                 } else {
                     if (counterPartyBuyQueue == null || counterPartyBuyQueue.size() == 0) {
                         break;
                     }
                     counterPartyTradeStateWithFee = tradeQueueState.getBuyFirst();
+                    fee = counterPartyTradeStateWithFee.getFee();
                 }
 
                 TradeState counterPartyTradeState = counterPartyTradeStateWithFee.getTradeState();
@@ -140,7 +147,11 @@ public class MatchOrdersFlow {
                 //matchQuantity
                 BigDecimal matchQuantity = new BigDecimal(tradeState.getStockQuantity()).min(new BigDecimal(counterPartyTradeState.getStockQuantity()));
                 //matchResults
-                matchResults.add(new MatchRecord(matchPrice, matchQuantity, tradeState, newCounterPartyTradeState));
+                if (tradeType.equals("Buy")) {
+                    matchResults.add(new MatchRecord(matchPrice, matchQuantity, tradeState, newCounterPartyTradeState,initialBuyFee));
+                }else {
+                    matchResults.add(new MatchRecord(matchPrice, matchQuantity, tradeState, newCounterPartyTradeState,fee));
+                }
                 // Update the number of orders that have been filled
                 tradeState.stockQuantity = (new BigDecimal(tradeState.getStockQuantity()).subtract(matchQuantity)).intValue();
                 newCounterPartyTradeState.stockQuantity = (new BigDecimal(newCounterPartyTradeState.getStockQuantity()).subtract(matchQuantity)).intValue();
@@ -168,11 +179,20 @@ public class MatchOrdersFlow {
             // tradeState are placed in the order book when they are not fully filled
             if (tradeState.stockQuantity > 0) {
                 if (tradeType.equals("Buy")) {
-                      tradeStateWithFee.setFee(new BigDecimal(1+Math.random()).setScale(2,BigDecimal.ROUND_HALF_UP));
+                    BigDecimal tip = new BigDecimal(Math.random()).setScale(2, BigDecimal.ROUND_HALF_UP);
+                    BigDecimal stockSize = new BigDecimal(tradeQueueState.getBuyStockList().size() == 0 ? 1 : tradeQueueState.getBuyStockList().size());
+                    BigDecimal baseFee = stockSize.divide(new BigDecimal(10000)).multiply(new BigDecimal(tradeState.getStockPrice()))
+                            .multiply(new BigDecimal(tradeState.getStockQuantity()));
+                    System.out.println("baseFee===="+ baseFee.toString() + " tip====" + tip.toString());
+                    BigDecimal buyFee = baseFee.add(tip).setScale(2, BigDecimal.ROUND_HALF_UP);
+                    tradeStateWithFee.setFee(buyFee);
                     tradeQueueState.addBuyTrade(tradeStateWithFee);
                 } else {
                     tradeQueueState.addSellTrade(tradeStateWithFee);
                 }
+            }
+            if (matchResults != null && matchResults.size() > 0) {
+                System.out.println("matchResults====" + matchResults.toString());
             }
             return matchResults;
         }
