@@ -30,4 +30,12 @@ public class TradeStateWithFee {
     public void setFee(BigDecimal fee) {
         this.fee = fee;
     }
+
+    @Override
+    public String toString() {
+        return "TradeStateWithFee{" +
+                "tradeState=" + tradeState +
+                ", fee=" + fee +
+                '}';
+    }
 }

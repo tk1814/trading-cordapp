@@ -1,3 +1,4 @@
+/*
 package net.corda.samples.trading.flows;
 
 import co.paralleluniverse.fibers.Suspendable;
@@ -17,10 +18,12 @@ import java.util.Collections;
 import java.util.Currency;
 import java.util.List;
 
+*/
 /*
  * Responder Flow for the stock in exchange for fiat-currency. This flow receives the cost of stocks from
  * the seller and transfer the equivalent amount of fiat currency to the seller.
- */
+ *//*
+
 
 @InitiatedBy(DvPInitiatorFlow.class)
 public class DvPResponderFlow extends FlowLogic<SignedTransaction> {
@@ -56,4 +59,4 @@ public class DvPResponderFlow extends FlowLogic<SignedTransaction> {
         });
         return subFlow(new ReceiveFinalityFlow(counterpartySession));
     }
-}
+}*/
